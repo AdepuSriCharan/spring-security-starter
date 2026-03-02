@@ -18,7 +18,13 @@
     <packaging>pom</packaging>
 
     <name>Spring Security Explainer</name>
-    <description>A pluggable Application Security Layer for Spring Boot</description>
+    <description>
+        Zero-configuration Spring Boot security starter providing JWT authentication,
+        role and permission authorization, ownership checks, and refresh token rotation
+        with replay-attack detection. Eliminates manual Spring Security configuration
+        so developers can focus on business logic. Fully overridable via Spring Boot
+        auto-configuration — implement UserAccountProvider and you are done.
+    </description>
     <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
 
     <licenses>
@@ -33,6 +39,7 @@
         <developer>
             <id>adepusricharan</id>
             <name>Adepu Sri Charan</name>
+            <email>sricharan.adepu36@gmail.com</email>
             <url>https://github.com/AdepuSriCharan</url>
         </developer>
     </developers>
@@ -43,6 +50,11 @@
         <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
         <tag>v1.0.0</tag>
     </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer/issues</url>
+    </issueManagement>
 
     <properties>
         <java.version>17</java.version>

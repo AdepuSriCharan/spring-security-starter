@@ -1,5 +1,9 @@
 # Spring Security Explainer
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.adepusricharan/security-starter.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.adepusricharan/security-starter)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Java](https://img.shields.io/badge/Java-17+-green.svg)](https://www.oracle.com/java/)
+
 A zero-configuration Spring Boot starter that provides **JWT authentication, role & permission authorization, ownership checks, and refresh-token rotation** out of the box.
 
 The goal of this project is simple:
@@ -28,9 +32,9 @@ The goal of this project is simple:
 
 ```xml
 <dependency>
-    <groupId>com.sricharan.security</groupId>
+    <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
