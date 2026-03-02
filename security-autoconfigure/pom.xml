@@ -6,9 +6,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.sricharan.security</groupId>
+        <groupId>io.github.adepusricharan</groupId>
         <artifactId>spring-security-explainer</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>security-autoconfigure</artifactId>
@@ -18,7 +18,7 @@
     <dependencies>
         <!-- Our core module -->
         <dependency>
-            <groupId>com.sricharan.security</groupId>
+            <groupId>io.github.adepusricharan</groupId>
             <artifactId>security-core</artifactId>
             <version>${project.version}</version>
         </dependency>
