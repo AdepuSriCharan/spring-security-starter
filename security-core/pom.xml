@@ -8,12 +8,49 @@
     <parent>
         <groupId>io.github.adepusricharan</groupId>
         <artifactId>spring-security-explainer</artifactId>
-        <version>1.0.1</version>
+        <version>1.0.2</version>
     </parent>
 
     <artifactId>security-core</artifactId>
     <name>Security Core</name>
-    <description>Core interfaces, models, annotations, and exceptions for the security layer</description>
+    <description>
+        Core module of Spring Security Explainer — a zero-configuration Spring Boot security starter.
+        Contains the public interfaces (UserAccountProvider, AuthorizationManager, RefreshTokenStore),
+        authorization annotations (@RequireRole, @RequirePermission, @RequireOwner),
+        AuthenticatedUser model, SecurityUserContext (ThreadLocal access), and exception types.
+        Depend on this directly only if you are building custom adapters or extensions.
+        GitHub: https://github.com/AdepuSriCharan/spring-security-explainer
+    </description>
+    <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>adepusricharan</id>
+            <name>Adepu Sri Charan</name>
+            <email>sricharan.adepu36@gmail.com</email>
+            <url>https://github.com/AdepuSriCharan</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-explainer.git</connection>
+        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-explainer.git</developerConnection>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+        <tag>v1.0.2</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer/issues</url>
+    </issueManagement>
 
     <dependencies>
         <!-- Minimal Spring dependency — only for stereotype annotations -->

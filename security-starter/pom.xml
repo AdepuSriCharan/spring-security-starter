@@ -8,12 +8,52 @@
     <parent>
         <groupId>io.github.adepusricharan</groupId>
         <artifactId>spring-security-explainer</artifactId>
-        <version>1.0.1</version>
+        <version>1.0.2</version>
     </parent>
 
     <artifactId>security-starter</artifactId>
     <name>Security Starter</name>
-    <description>Starter dependency — just add this to your Spring Boot project</description>
+    <description>
+        Spring Security Explainer is a zero-configuration Spring Boot security starter.
+        It provides JWT access + refresh token authentication, role-based authorization (@RequireRole),
+        permission-based authorization (@RequirePermission), ownership checks (@RequireOwner via SpEL),
+        and refresh token rotation with replay-attack detection — all out of the box.
+        Developers only need to implement UserAccountProvider to integrate with their database.
+        No filters, no JWT wiring, no SecurityFilterChain needed.
+        All components are fully overridable via Spring Boot auto-configuration (@ConditionalOnMissingBean).
+        Built-in endpoints: POST /login, POST /refresh, POST /logout.
+        GitHub: https://github.com/AdepuSriCharan/spring-security-explainer
+    </description>
+    <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>adepusricharan</id>
+            <name>Adepu Sri Charan</name>
+            <email>sricharan.adepu36@gmail.com</email>
+            <url>https://github.com/AdepuSriCharan</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-explainer.git</connection>
+        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-explainer.git</developerConnection>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+        <tag>v1.0.2</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer/issues</url>
+    </issueManagement>
 
     <dependencies>
         <dependency>
