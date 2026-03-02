@@ -12,13 +12,37 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.sricharan.security</groupId>
+    <groupId>io.github.adepusricharan</groupId>
     <artifactId>spring-security-explainer</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
 
     <name>Spring Security Explainer</name>
     <description>A pluggable Application Security Layer for Spring Boot</description>
+    <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>adepusricharan</id>
+            <name>Adepu Sri Charan</name>
+            <url>https://github.com/AdepuSriCharan</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-explainer.git</connection>
+        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-explainer.git</developerConnection>
+        <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+        <tag>v1.0.0</tag>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
@@ -29,8 +53,65 @@
         <module>security-core</module>
         <module>security-autoconfigure</module>
         <module>security-starter</module>
-        <module>security-test</module>
-        <module>testing-security-explainer</module>
     </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.7</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
