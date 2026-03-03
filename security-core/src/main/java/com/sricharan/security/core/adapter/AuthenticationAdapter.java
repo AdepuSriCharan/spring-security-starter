@@ -13,17 +13,13 @@ import org.springframework.security.core.Authentication;
  *
  * <h3>Built-in adapters (provided in autoconfigure):</h3>
  * <ul>
- *   <li>{@code SpringSecurityAuthenticationAdapter} — for {@code UsernamePasswordAuthenticationToken}</li>
+ *   <li>{@code JwtAuthenticationAdapter} — for internal JWT tokens</li>
+ *   <li>{@code OAuth2AuthenticationAdapter} — for external OAuth2/OIDC providers</li>
+ *   <li>{@code KeycloakAuthenticationAdapter} — for Keycloak nested claim structure</li>
+ *   <li>{@code SpringSecurityAuthenticationAdapter} — fallback for {@code UsernamePasswordAuthenticationToken}</li>
  * </ul>
  *
- * <h3>Future adapters (Phase 4–5):</h3>
- * <ul>
- *   <li>JWT token adapter</li>
- *   <li>Keycloak token adapter</li>
- *   <li>OAuth2 token adapter</li>
- * </ul>
- *
- * <p>Register your adapter as a Spring bean and it will be picked up
+ * <p>Register a custom adapter as a Spring bean and it will be picked up
  * automatically by the {@code SecurityContextFilter}.
  */
 public interface AuthenticationAdapter {

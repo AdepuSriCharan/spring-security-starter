@@ -85,6 +85,13 @@
             <artifactId>java-jwt</artifactId>
             <version>4.4.0</version>
         </dependency>
+
+        <!-- OAuth2 Resource Server — optional, only needed for OAUTH2/KEYCLOAK mode -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
 </project>

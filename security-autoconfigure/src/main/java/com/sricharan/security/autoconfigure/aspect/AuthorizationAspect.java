@@ -45,7 +45,7 @@ public class AuthorizationAspect {
      * Intercept methods annotated with {@code @RequireRole}.
      */
     @Before("@annotation(requireRole)")
-    public void checkRole(JoinPoint joinPoint, RequireRole requireRole) {
+    public void checkRole(RequireRole requireRole) {
         AuthenticatedUser user = SecurityUserContext.requireCurrentUser();
         authorizationManager.checkRole(user, requireRole.value());
     }
@@ -54,7 +54,7 @@ public class AuthorizationAspect {
      * Intercept methods annotated with {@code @RequirePermission}.
      */
     @Before("@annotation(requirePermission)")
-    public void checkPermission(JoinPoint joinPoint, RequirePermission requirePermission) {
+    public void checkPermission(RequirePermission requirePermission) {
         AuthenticatedUser user = SecurityUserContext.requireCurrentUser();
         authorizationManager.checkPermission(user, requirePermission.value());
     }

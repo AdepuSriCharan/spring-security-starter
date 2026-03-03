@@ -27,6 +27,7 @@ public class JwtService {
     private final JWTVerifier refreshVerifier;
 
     public JwtService(JwtProperties properties) {
+        properties.validate();  // fail fast — only reached in INTERNAL mode
         this.properties = properties;
         this.algorithm = Algorithm.HMAC256(properties.getSecret());
         this.accessVerifier = JWT.require(this.algorithm)

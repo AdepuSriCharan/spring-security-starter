@@ -1,14 +1,14 @@
 package com.sricharan.security.autoconfigure.jwt;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Configuration properties for JWT generation and verification.
  * <p>Prefix: {@code security.jwt}
  *
- * <p><strong>IMPORTANT:</strong> You MUST set {@code security.jwt.secret} in your
- * application properties. The application will refuse to start without it.
+ * <p><strong>IMPORTANT:</strong> Only required when {@code security.auth-mode=INTERNAL} (the default).
+ * When using {@code OAUTH2} or {@code KEYCLOAK} mode, these properties are ignored.
+ * You MUST set {@code security.jwt.secret} in INTERNAL mode — the application will refuse to start without it.
  */
 @ConfigurationProperties(prefix = "security.jwt")
 public class JwtProperties {
@@ -17,7 +17,7 @@ public class JwtProperties {
 
     /**
      * The secret key used to sign the JWT tokens.
-     * <strong>Must be explicitly configured — no default provided.</strong>
+     * <strong>Must be explicitly configured in INTERNAL mode — no default provided.</strong>
      */
     private String secret;
 
@@ -39,7 +39,10 @@ public class JwtProperties {
      */
     private String issuer = "spring-security-explainer";
 
-    @PostConstruct
+    /**
+     * Validates JWT secret — only called in INTERNAL mode by {@link JwtService}.
+     * Not a @PostConstruct so it doesn't run in OAUTH2/KEYCLOAK mode.
+     */
     public void validate() {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
