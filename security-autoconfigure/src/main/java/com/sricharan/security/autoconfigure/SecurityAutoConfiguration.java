@@ -1,13 +1,9 @@
 package com.sricharan.security.autoconfigure;
 
 import com.sricharan.security.autoconfigure.adapter.JwtAuthenticationAdapter;
-import com.sricharan.security.autoconfigure.adapter.KeycloakAuthenticationAdapter;
-import com.sricharan.security.autoconfigure.adapter.OAuth2AuthenticationAdapter;
 import com.sricharan.security.autoconfigure.adapter.SpringSecurityAuthenticationAdapter;
 import com.sricharan.security.autoconfigure.aspect.AuthorizationAspect;
 import com.sricharan.security.autoconfigure.config.SecurityProperties;
-import com.sricharan.security.core.config.AuthMode;
-import org.springframework.core.env.Environment;
 import com.sricharan.security.autoconfigure.controller.AuthController;
 import com.sricharan.security.autoconfigure.filter.JwtAuthenticationFilter;
 import com.sricharan.security.autoconfigure.filter.SecurityContextFilter;
@@ -21,6 +17,7 @@ import com.sricharan.security.core.account.UserAccountProvider;
 import com.sricharan.security.core.adapter.AuthenticationAdapter;
 import com.sricharan.security.core.authorization.AuthorizationManager;
 import com.sricharan.security.core.authorization.DefaultAuthorizationManager;
+import com.sricharan.security.core.config.AuthMode;
 import com.sricharan.security.core.token.RefreshTokenStore;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.ObjectProvider;
@@ -31,6 +28,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,7 +37,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.ArrayList;
@@ -48,18 +45,53 @@ import java.util.List;
 /**
  * Auto-configuration for the Spring Security Explainer library.
  *
- * <p>Every bean uses {@code @ConditionalOnMissingBean} so applications
- * can override any component by declaring their own bean of the same type.
+ * <p>This is the central configuration class that bootstraps all security infrastructure.
+ * Every bean uses {@code @ConditionalOnMissingBean}, allowing applications to override
+ * any component by declaring their own bean of the same type.
  *
- * <p>Authentication mode is controlled by {@code security.auth-mode}:
+ * <h3>Authentication Modes</h3>
+ * <p>The library supports three authentication modes, controlled by the
+ * {@code security.auth-mode} property in {@code application.properties}:
+ *
+ * <table border="1" cellpadding="5">
+ *   <tr><th>Mode</th><th>Property Value</th><th>Description</th></tr>
+ *   <tr>
+ *     <td><b>INTERNAL</b></td>
+ *     <td>{@code security.auth-mode=INTERNAL}</td>
+ *     <td>Default. Built-in JWT authentication with {@code /login}, {@code /refresh},
+ *         and {@code /logout} endpoints. Requires {@code security.jwt.secret}.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><b>OAUTH2</b></td>
+ *     <td>{@code security.auth-mode=OAUTH2}</td>
+ *     <td>Delegates to Spring's OAuth2 Resource Server. Validates Bearer JWTs from
+ *         any OIDC provider (Auth0, Azure AD, Okta, etc.). Requires
+ *         {@code spring.security.oauth2.resourceserver.jwt.issuer-uri}.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><b>KEYCLOAK</b></td>
+ *     <td>{@code security.auth-mode=KEYCLOAK}</td>
+ *     <td>Like OAUTH2, but with automatic extraction of Keycloak's nested
+ *         {@code realm_access.roles} and {@code resource_access.&lt;client&gt;.roles}.
+ *         Requires {@code spring.security.oauth2.resourceserver.jwt.issuer-uri}
+ *         and optionally {@code security.keycloak.client-id}.</td>
+ *   </tr>
+ * </table>
+ *
+ * <h3>Filter Chain Architecture</h3>
  * <ul>
- *   <li>{@code INTERNAL} (default) — built-in JWT. /login, /refresh, /logout active.</li>
- *   <li>{@code OAUTH2} — Spring OAuth2 Resource Server. /login not provided.</li>
- *   <li>{@code KEYCLOAK} — OAuth2 with Keycloak nested-claim extraction.</li>
+ *   <li><b>INTERNAL:</b> JwtAuthenticationFilter → SecurityContextFilter → Controller</li>
+ *   <li><b>OAUTH2/KEYCLOAK:</b> BearerTokenAuthenticationFilter (Spring) → SecurityContextFilter → Controller</li>
  * </ul>
+ *
+ * <p>OAUTH2 and KEYCLOAK mode beans are isolated in {@link ExternalProviderAutoConfiguration}
+ * to prevent {@code ClassNotFoundException} when {@code spring-boot-starter-oauth2-resource-server}
+ * is not on the classpath.
  *
  * @see SecurityProperties
  * @see JwtProperties
+ * @see AuthMode
+ * @see ExternalProviderAutoConfiguration
  */
 @AutoConfiguration
 @EnableConfigurationProperties({JwtProperties.class, SecurityProperties.class})
@@ -74,28 +106,31 @@ public class SecurityAutoConfiguration {
     }
 
     /**
-     * Fail fast if OAUTH2 or KEYCLOAK mode is active but no token validation
-     * endpoint has been configured. Without issuer-uri or jwk-set-uri, every
-     * request will fail at runtime with a cryptic error.
+     * Validates that external provider configuration is present when OAUTH2 or KEYCLOAK
+     * mode is active. Without an {@code issuer-uri} or {@code jwk-set-uri}, every request
+     * would fail at runtime with a cryptic error.
      */
     @PostConstruct
     public void validateExternalProviderConfig() {
         AuthMode mode = securityProperties.getAuthMode();
         if (mode == AuthMode.OAUTH2 || mode == AuthMode.KEYCLOAK) {
-            String issuerUri  = environment.getProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri");
-            String jwkSetUri  = environment.getProperty("spring.security.oauth2.resourceserver.jwt.jwk-set-uri");
-            if ((issuerUri == null || issuerUri.isBlank()) && (jwkSetUri == null || jwkSetUri.isBlank())) {
+            String issuerUri = environment.getProperty(
+                    "spring.security.oauth2.resourceserver.jwt.issuer-uri");
+            String jwkSetUri = environment.getProperty(
+                    "spring.security.oauth2.resourceserver.jwt.jwk-set-uri");
+            if ((issuerUri == null || issuerUri.isBlank())
+                    && (jwkSetUri == null || jwkSetUri.isBlank())) {
                 throw new IllegalStateException(
-                        "security.auth-mode=" + mode + " requires either:\n" +
-                        "  spring.security.oauth2.resourceserver.jwt.issuer-uri=https://<your-idp>/realms/<realm>\n" +
-                        "or\n" +
-                        "  spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://<your-idp>/realms/<realm>/protocol/openid-connect/certs\n" +
-                        "Configure one of these in application.properties to allow token validation.");
+                        "security.auth-mode=" + mode + " requires either:\n"
+                        + "  spring.security.oauth2.resourceserver.jwt.issuer-uri=<your-idp-url>\n"
+                        + "or\n"
+                        + "  spring.security.oauth2.resourceserver.jwt.jwk-set-uri=<your-jwks-url>\n"
+                        + "Configure one of these in application.properties.");
             }
         }
     }
 
-    // ── Universal beans (all modes) ───────────────────────────────────────────
+    // ── Universal beans (active in all modes) ─────────────────────────────────
 
     @Bean
     @ConditionalOnMissingBean
@@ -104,12 +139,13 @@ public class SecurityAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(AuthenticationAdapter.class)
+    @ConditionalOnMissingBean
     public SpringSecurityAuthenticationAdapter springSecurityAuthenticationAdapter() {
         return new SpringSecurityAuthenticationAdapter();
     }
 
     @Bean
+    @ConditionalOnMissingBean
     public SecurityContextFilter securityContextFilter(List<AuthenticationAdapter> adapters) {
         return new SecurityContextFilter(adapters);
     }
@@ -152,7 +188,7 @@ public class SecurityAutoConfiguration {
         return reg;
     }
 
-    // ── INTERNAL mode beans (default) ────────────────────────────────────────
+    // ── INTERNAL mode beans (default) ─────────────────────────────────────────
 
     @Bean
     @ConditionalOnMissingBean
@@ -203,7 +239,13 @@ public class SecurityAutoConfiguration {
 
     /**
      * Security filter chain for INTERNAL mode.
-     * Uses the built-in JwtAuthenticationFilter.
+     *
+     * <p>Filter order: {@link JwtAuthenticationFilter} validates the Bearer token and
+     * populates {@code SecurityContextHolder}, then {@link SecurityContextFilter} bridges
+     * it to {@link com.sricharan.security.core.context.SecurityUserContext}.
+     *
+     * <p>Public endpoints: {@code /login}, {@code /refresh}, {@code /logout} plus any
+     * paths listed in {@code security.public-endpoints}.
      */
     @Bean
     @ConditionalOnMissingBean
@@ -223,73 +265,15 @@ public class SecurityAutoConfiguration {
                 .build();
     }
 
-    // ── OAUTH2 mode beans ─────────────────────────────────────────────────────
-
-    @Bean
-    @ConditionalOnMissingBean(OAuth2AuthenticationAdapter.class)
-    @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "OAUTH2")
-    public OAuth2AuthenticationAdapter oauth2AuthenticationAdapter() {
-        return new OAuth2AuthenticationAdapter(securityProperties);
-    }
-
-    /**
-     * Security filter chain for OAUTH2 mode.
-     * Delegates token validation to Spring's OAuth2 Resource Server.
-     * SecurityContextFilter runs after BearerTokenAuthenticationFilter so the
-     * Authentication is already populated in SecurityContextHolder.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "OAUTH2")
-    public SecurityFilterChain oauth2SecurityFilterChain(
-            HttpSecurity http,
-            SecurityProperties securityProperties,
-            AuthenticationEntryPoint authenticationEntryPoint,
-            AccessDeniedHandler accessDeniedHandler,
-            SecurityContextFilter securityContextFilter) throws Exception {
-
-        return buildBaseChain(http, securityProperties, authenticationEntryPoint, accessDeniedHandler,
-                List.of())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
-                .addFilterAfter(securityContextFilter, BearerTokenAuthenticationFilter.class)
-                .build();
-    }
-
-    // ── KEYCLOAK mode beans ───────────────────────────────────────────────────
-
-    @Bean
-    @ConditionalOnMissingBean(KeycloakAuthenticationAdapter.class)
-    @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "KEYCLOAK")
-    public KeycloakAuthenticationAdapter keycloakAuthenticationAdapter() {
-        return new KeycloakAuthenticationAdapter(securityProperties);
-    }
-
-    /**
-     * Security filter chain for KEYCLOAK mode.
-     * Same as OAUTH2 but uses KeycloakAuthenticationAdapter for claim extraction.
-     * SecurityContextFilter runs after BearerTokenAuthenticationFilter so the
-     * Authentication is already populated in SecurityContextHolder.
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "KEYCLOAK")
-    public SecurityFilterChain keycloakSecurityFilterChain(
-            HttpSecurity http,
-            SecurityProperties securityProperties,
-            AuthenticationEntryPoint authenticationEntryPoint,
-            AccessDeniedHandler accessDeniedHandler,
-            SecurityContextFilter securityContextFilter) throws Exception {
-
-        return buildBaseChain(http, securityProperties, authenticationEntryPoint, accessDeniedHandler,
-                List.of())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
-                .addFilterAfter(securityContextFilter, BearerTokenAuthenticationFilter.class)
-                .build();
-    }
-
     // ── Shared filter chain builder ───────────────────────────────────────────
 
-    private HttpSecurity buildBaseChain(
+    /**
+     * Constructs the base {@link HttpSecurity} configuration shared by all modes.
+     *
+     * <p>Configures: stateless sessions, CSRF disabled, JSON error handlers,
+     * and public endpoint matchers.
+     */
+    static HttpSecurity buildBaseChain(
             HttpSecurity http,
             SecurityProperties securityProperties,
             AuthenticationEntryPoint authenticationEntryPoint,
@@ -303,12 +287,12 @@ public class SecurityAutoConfiguration {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .logout(AbstractHttpConfigurer::disable)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler)
-                )
+                        .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> {
                     if (!permitAll.isEmpty()) {
                         auth.requestMatchers(permitAll.toArray(new String[0])).permitAll();

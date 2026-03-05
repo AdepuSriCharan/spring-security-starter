@@ -13,45 +13,44 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "security.jwt")
 public class JwtProperties {
 
-    private static final String INSECURE_DEFAULT = "default-insecure-secret-change-me-immediately";
-
     /**
-     * The secret key used to sign the JWT tokens.
-     * <strong>Must be explicitly configured in INTERNAL mode — no default provided.</strong>
+     * The HMAC secret key used to sign JWT tokens.
+     * <strong>Must be explicitly configured in INTERNAL mode.</strong>
+     * Ignored in OAUTH2 and KEYCLOAK modes.
      */
     private String secret;
 
     /**
-     * Token expiration time in milliseconds.
-     * Default: 3600000ms (1 Hour)
+     * Access token expiration time in milliseconds.
+     * Default: 3600000 (1 hour).
      */
     private long expirationMs = 3600000L;
 
     /**
      * Refresh token expiration time in milliseconds.
-     * Default: 604800000ms (7 Days)
+     * Default: 604800000 (7 days).
      */
     private long refreshExpirationMs = 604_800_000L;
 
     /**
-     * The issuer of the token.
-     * Default: spring-security-explainer
+     * The issuer claim ({@code iss}) embedded in generated tokens.
+     * Default: {@code spring-security-explainer}.
      */
     private String issuer = "spring-security-explainer";
 
     /**
-     * Validates JWT secret — only called in INTERNAL mode by {@link JwtService}.
-     * Not a @PostConstruct so it doesn't run in OAUTH2/KEYCLOAK mode.
+     * Validates that the JWT secret is properly configured.
+     *
+     * <p>Called by {@link JwtService} constructor (INTERNAL mode only).
+     * This is intentionally not a {@code @PostConstruct} method to avoid
+     * failing in OAUTH2/KEYCLOAK modes where the secret is not required.
+     *
+     * @throws IllegalStateException if the secret is null or blank
      */
     public void validate() {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "JWT secret is not configured. Set 'security.jwt.secret' in your application properties.");
-        }
-        if (INSECURE_DEFAULT.equals(secret)) {
-            throw new IllegalStateException(
-                    "JWT secret is set to the insecure default. " +
-                    "You MUST provide a strong, unique secret via 'security.jwt.secret'.");
         }
     }
 

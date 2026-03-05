@@ -28,7 +28,9 @@ import java.util.Set;
  * }
  * </pre>
  *
- * <p>Both are merged into the {@link AuthenticatedUser#getRoles()} set.
+ * <p>Realm-level roles go to {@link AuthenticatedUser#getRoles()}, while
+ * client-level roles are treated as fine-grained permissions and go to
+ * {@link AuthenticatedUser#getPermissions()}.
  * Configurable via:
  * <pre>
  * security.keycloak.realm-access-claim=realm_access   # default
@@ -57,21 +59,25 @@ public class KeycloakAuthenticationAdapter extends OAuth2AuthenticationAdapter {
         JwtAuthenticationToken token = (JwtAuthenticationToken) authentication;
         Map<String, Object> attributes = token.getTokenAttributes();
 
-        String username = getStringClaim(attributes, "preferred_username");
-        if (username == null) username = getStringClaim(attributes, "sub");
-
-        String userId = getStringClaim(attributes, "sub");
-
-        // Extract realm-level roles
-        Set<String> roles = new HashSet<>(extractRealmRoles(attributes));
-
-        // Merge client-level roles if clientId is configured
-        if (StringUtils.hasText(keycloakClaims.getClientId())) {
-            roles.addAll(extractClientRoles(attributes));
+        // Use configurable claim names from parent's OAuth2Claims
+        String username = getStringClaim(attributes, claims.getUsernameClaim());
+        if (username == null) {
+            username = getStringClaim(attributes, claims.getUserIdClaim()); // fallback
         }
 
-        // Standard permissions claim (not Keycloak-specific, but supported)
-        Set<String> permissions = getListClaim(attributes, "permissions");
+        String userId = getStringClaim(attributes, claims.getUserIdClaim());
+
+        // Extract realm-level roles from Keycloak's nested structure
+        Set<String> roles = new HashSet<>(extractRealmRoles(attributes));
+
+        // Client-level roles → treated as permissions (fine-grained access)
+        Set<String> permissions = new HashSet<>();
+        if (StringUtils.hasText(keycloakClaims.getClientId())) {
+            permissions.addAll(extractClientRoles(attributes));
+        }
+
+        // Also merge any explicit permissions claim (if present)
+        permissions.addAll(getListClaim(attributes, claims.getPermissionsClaim()));
 
         return AuthenticatedUser.builder(username)
                 .userId(userId)

@@ -29,7 +29,7 @@ import java.util.Set;
  */
 public class OAuth2AuthenticationAdapter implements AuthenticationAdapter {
 
-    private final SecurityProperties.OAuth2Claims claims;
+    protected final SecurityProperties.OAuth2Claims claims;
 
     public OAuth2AuthenticationAdapter(SecurityProperties properties) {
         this.claims = properties.getOauth2();

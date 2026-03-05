@@ -9,13 +9,45 @@ import java.util.List;
 /**
  * Configuration properties for the Spring Security Explainer starter.
  *
- * <p>All properties share the {@code security.*} prefix:
- * <ul>
- *   <li>{@code security.auth-mode} — authentication mode (INTERNAL / OAUTH2 / KEYCLOAK)</li>
- *   <li>{@code security.public-endpoints} — ant-matchers that bypass authentication</li>
- *   <li>{@code security.oauth2.*} — JWT claim names for OAUTH2 mode</li>
- *   <li>{@code security.keycloak.*} — JWT claim names for KEYCLOAK mode</li>
- * </ul>
+ * <p>All properties share the {@code security.*} prefix.
+ *
+ * <h3>Switching Authentication Modes</h3>
+ * <p>The starter currently supports three modes. Set {@code security.auth-mode}
+ * in your {@code application.properties} to activate the desired mode:
+ *
+ * <h4>1. INTERNAL (default)</h4>
+ * <pre>
+ * security.auth-mode=INTERNAL
+ * security.jwt.secret=your-256-bit-secret
+ * security.jwt.expiration-ms=3600000
+ * security.jwt.refresh-expiration-ms=604800000
+ * security.jwt.issuer=my-app
+ * security.public-endpoints=/register,/public
+ * </pre>
+ *
+ * <h4>2. OAUTH2</h4>
+ * <pre>
+ * security.auth-mode=OAUTH2
+ * spring.security.oauth2.resourceserver.jwt.issuer-uri=https://login.example.com
+ * security.oauth2.username-claim=preferred_username
+ * security.oauth2.user-id-claim=sub
+ * security.oauth2.roles-claim=roles
+ * security.oauth2.permissions-claim=permissions
+ * security.public-endpoints=/public
+ * </pre>
+ *
+ * <h4>3. KEYCLOAK</h4>
+ * <pre>
+ * security.auth-mode=KEYCLOAK
+ * spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:9090/realms/my-realm
+ * security.keycloak.client-id=my-app
+ * security.keycloak.realm-access-claim=realm_access
+ * security.keycloak.resource-access-claim=resource_access
+ * security.keycloak.roles-key=roles
+ * security.public-endpoints=/public
+ * </pre>
+ *
+ * @see com.sricharan.security.core.config.AuthMode
  */
 @ConfigurationProperties(prefix = "security")
 public class SecurityProperties {
@@ -73,7 +105,6 @@ public class SecurityProperties {
         return keycloak;
     }
 
-
     /**
      * JWT claim name mappings used when {@code security.auth-mode=OAUTH2}.
      *
@@ -112,7 +143,6 @@ public class SecurityProperties {
         public String getPermissionsClaim() { return permissionsClaim; }
         public void setPermissionsClaim(String permissionsClaim) { this.permissionsClaim = permissionsClaim; }
     }
-
 
     /**
      * JWT claim name mappings used when {@code security.auth-mode=KEYCLOAK}.

@@ -1,1 +1,2 @@
 com.sricharan.security.autoconfigure.SecurityAutoConfiguration
+com.sricharan.security.autoconfigure.ExternalProviderAutoConfiguration
