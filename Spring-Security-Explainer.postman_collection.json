@@ -1,0 +1,1021 @@
+{
+	"info": {
+		"_postman_id": "spring-security-explainer-v1",
+		"name": "Spring Security Explainer",
+		"description": "End-to-end test collection for the Spring Security Explainer starter library.\n\nCovers all 3 auth modes:\n- **INTERNAL** — built-in JWT (register → login → access/refresh/logout)\n- **KEYCLOAK** — Keycloak as IdP (realm_access → roles, resource_access → permissions)\n- **OAUTH2** — generic OIDC provider (flat claims)\n\n## Quick Start\n1. Set the `base_url` variable (default `http://localhost:8080`)\n2. Pick a folder matching your `security.auth-mode`\n3. Run the requests in order — tokens auto-propagate via collection variables\n\n## Variables\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `base_url` | `http://localhost:8080` | App base URL |\n| `keycloak_url` | `http://localhost:9090` | Keycloak base URL |\n| `keycloak_realm` | `spring-demo` | Keycloak realm |\n| `keycloak_client_id` | `spring-demo-app` | Keycloak client ID |\n| `access_token` | (auto) | Set by login/token scripts |\n| `refresh_token` | (auto) | Set by login/refresh scripts |\n| `alice_token` | (auto) | Alice's access token |\n| `bob_token` | (auto) | Bob's access token |\n| `post_id` | (auto) | Last created post ID |\n| `user_id` | (auto) | Current user's ID |",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url",           "value": "http://localhost:8080" },
+		{ "key": "keycloak_url",       "value": "http://localhost:9090" },
+		{ "key": "keycloak_realm",     "value": "spring-demo" },
+		{ "key": "keycloak_client_id", "value": "spring-demo-app" },
+		{ "key": "access_token",       "value": "" },
+		{ "key": "refresh_token",      "value": "" },
+		{ "key": "alice_token",        "value": "" },
+		{ "key": "bob_token",          "value": "" },
+		{ "key": "post_id",            "value": "" },
+		{ "key": "user_id",            "value": "" },
+		{ "key": "alice_user_id",      "value": "" },
+		{ "key": "bob_user_id",        "value": "" }
+	],
+	"item": [
+		{
+			"name": "🟢 INTERNAL Mode",
+			"description": "Built-in JWT authentication.\n\nSet `security.auth-mode=INTERNAL` in application.properties.\n\nFlow: Register → Login → Use accessToken → Refresh → Logout",
+			"item": [
+				{
+					"name": "Public Endpoint (no auth)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/public", "host": ["{{base_url}}"], "path": ["public"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Public endpoint returns 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().message).to.include('no authentication');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Register User (alice)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"alice\",\n  \"password\": \"Password1\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User registered with USER role', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.roles).to.include('USER');",
+									"    pm.collectionVariables.set('alice_user_id', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Register Admin (bob)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"bob\",\n  \"password\": \"Password1\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/register/admin", "host": ["{{base_url}}"], "path": ["register", "admin"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin registered with ADMIN+USER roles and post:delete', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.roles).to.include('ADMIN');",
+									"    pm.expect(json.roles).to.include('USER');",
+									"    pm.expect(json.permissions).to.include('post:delete');",
+									"    pm.collectionVariables.set('bob_user_id', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Login (alice)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"alice\",\n  \"password\": \"Password1\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Login returns access + refresh tokens', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.accessToken).to.be.a('string');",
+									"    pm.expect(json.refreshToken).to.be.a('string');",
+									"    pm.collectionVariables.set('access_token', json.accessToken);",
+									"    pm.collectionVariables.set('refresh_token', json.refreshToken);",
+									"    pm.collectionVariables.set('alice_token', json.accessToken);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Login (bob)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"bob\",\n  \"password\": \"Password1\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob login succeeds', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('bob_token', json.accessToken);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me (alice)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Returns alice with USER role', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.username).to.eql('alice');",
+									"    pm.expect(json.roles).to.include('USER');",
+									"    pm.collectionVariables.set('user_id', json.userId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me (bob)",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Returns bob with ADMIN role and post:delete', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.username).to.eql('bob');",
+									"    pm.expect(json.roles).to.include('ADMIN');",
+									"    pm.expect(json.permissions).to.include('post:delete');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Post (alice) — @RequireRole USER ✅",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{alice_token}}" },
+							{ "key": "Content-Type",  "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"My First Post\",\n  \"content\": \"Hello from INTERNAL mode!\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/posts", "host": ["{{base_url}}"], "path": ["posts"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Post created by alice', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.authorUsername).to.eql('alice');",
+									"    pm.collectionVariables.set('post_id', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "List Posts — @RequireRole USER ✅",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/posts", "host": ["{{base_url}}"], "path": ["posts"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Returns list of posts', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json()).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Post by ID — @RequireRole USER ✅",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Returns the created post', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().id).to.eql(parseInt(pm.collectionVariables.get('post_id')));",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Own Post (alice) — ownership ✅",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{alice_token}}" },
+							{ "key": "Content-Type",  "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Title\",\n  \"content\": \"Updated content by the owner\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Owner can update own post', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().title).to.eql('Updated Title');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Other's Post (bob) — ownership ❌ 403",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{bob_token}}" },
+							{ "key": "Content-Type",  "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Hijacked!\",\n  \"content\": \"This should fail\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Non-owner gets 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /admin/users (alice, USER) — @RequireRole ADMIN ❌ 403",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('USER cannot access ADMIN endpoint → 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('ROLE');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /admin/users (bob, ADMIN) — @RequireRole ADMIN ✅",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('ADMIN can list all users', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json()).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Post (alice, no perm) — @RequirePermission ❌ 403",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User without post:delete gets 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('PERMISSION');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Post (bob, has post:delete) — @RequirePermission ✅",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Admin with post:delete can delete → 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /profile/{userId} (own) — @RequireOwner ✅",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/profile/{{alice_user_id}}", "host": ["{{base_url}}"], "path": ["profile", "{{alice_user_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Owner can access own profile', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().username).to.eql('alice');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /profile/{userId} (other) — @RequireOwner ❌ 403",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/profile/{{bob_user_id}}", "host": ["{{base_url}}"], "path": ["profile", "{{bob_user_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Non-owner gets 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('OWNERSHIP');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/refresh", "host": ["{{base_url}}"], "path": ["refresh"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Refresh returns new token pair', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.accessToken).to.be.a('string');",
+									"    pm.expect(json.refreshToken).to.be.a('string');",
+									"    pm.collectionVariables.set('access_token', json.accessToken);",
+									"    pm.collectionVariables.set('refresh_token', json.refreshToken);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Logout succeeds', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().message).to.include('Logged out');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me after logout — 401",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Note: access token may still work until it expires (stateless JWT).",
+									"// The refresh token is revoked, so no new tokens can be issued.",
+									"pm.test('Response is 200 or 401', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "No Auth → /me — 401",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthenticated request returns 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"    pm.expect(pm.response.json().error).to.eql('UNAUTHORIZED');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔵 KEYCLOAK Mode",
+			"description": "Keycloak as Identity Provider.\n\nSet `security.auth-mode=KEYCLOAK` in application.properties.\n\n**Prerequisites:**\n- Keycloak running on `{{keycloak_url}}`\n- Realm: `{{keycloak_realm}}`\n- Client: `{{keycloak_client_id}}` (public, Direct Access Grants enabled)\n- Users: alice (USER role), bob (ADMIN+USER roles, post:delete client role)\n\nTokens are obtained from Keycloak's token endpoint, then used against the app.",
+			"item": [
+				{
+					"name": "Get Alice Token (Keycloak)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "client_id",  "value": "{{keycloak_client_id}}" },
+								{ "key": "grant_type", "value": "password" },
+								{ "key": "username",   "value": "alice" },
+								{ "key": "password",   "value": "alice123" }
+							]
+						},
+						"url": {
+							"raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+							"host": ["{{keycloak_url}}"],
+							"path": ["realms", "{{keycloak_realm}}", "protocol", "openid-connect", "token"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice Keycloak token obtained', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('alice_token', json.access_token);",
+									"    pm.collectionVariables.set('access_token', json.access_token);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Bob Token (Keycloak)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "client_id",  "value": "{{keycloak_client_id}}" },
+								{ "key": "grant_type", "value": "password" },
+								{ "key": "username",   "value": "bob" },
+								{ "key": "password",   "value": "bob123" }
+							]
+						},
+						"url": {
+							"raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+							"host": ["{{keycloak_url}}"],
+							"path": ["realms", "{{keycloak_realm}}", "protocol", "openid-connect", "token"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob Keycloak token obtained', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('bob_token', json.access_token);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /public (no auth)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/public", "host": ["{{base_url}}"], "path": ["public"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Public endpoint returns 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me (alice) — realm_access → USER",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Alice: username from preferred_username, roles from realm_access', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.username).to.eql('alice');",
+									"    pm.expect(json.roles).to.include('USER');",
+									"    pm.collectionVariables.set('alice_user_id', json.userId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me (bob) — ADMIN + post:delete permission",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Bob: ADMIN role + post:delete permission from client roles', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.username).to.eql('bob');",
+									"    pm.expect(json.roles).to.include('ADMIN');",
+									"    pm.expect(json.roles).to.include('USER');",
+									"    pm.expect(json.permissions).to.include('post:delete');",
+									"    pm.collectionVariables.set('bob_user_id', json.userId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Post (alice) — @RequireRole USER ✅",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{alice_token}}" },
+							{ "key": "Content-Type",  "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Keycloak Post\",\n  \"content\": \"Created via Keycloak token\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/posts", "host": ["{{base_url}}"], "path": ["posts"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Post created with Keycloak sub as authorId', function () {",
+									"    pm.response.to.have.status(201);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.authorUsername).to.eql('alice');",
+									"    pm.collectionVariables.set('post_id', json.id);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "List Posts",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/posts", "host": ["{{base_url}}"], "path": ["posts"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Returns array of posts', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json()).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /admin/users (alice, USER) — ❌ 403",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('USER role cannot access ADMIN endpoint', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('ROLE');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /admin/users (bob, ADMIN) — ✅ 200",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/admin/users", "host": ["{{base_url}}"], "path": ["admin", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('ADMIN can list all users', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json()).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Post (alice, no perm) — @RequirePermission ❌ 403",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('No post:delete permission → 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('PERMISSION');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Post (bob, has post:delete) — @RequirePermission ✅ 204",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Authorization", "value": "Bearer {{bob_token}}" }],
+						"url": { "raw": "{{base_url}}/posts/{{post_id}}", "host": ["{{base_url}}"], "path": ["posts", "{{post_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('post:delete client role → permission → 204', function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "@RequireOwner — Alice → Bob's profile ❌ 403",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/profile/{{bob_user_id}}", "host": ["{{base_url}}"], "path": ["profile", "{{bob_user_id}}"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Non-owner gets 403', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('OWNERSHIP');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "No Auth → /me — 401",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthenticated returns 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🟠 OAUTH2 Mode",
+			"description": "Generic OIDC provider with flat JWT claims.\n\nSet `security.auth-mode=OAUTH2` in application.properties.\n\n**How it differs from KEYCLOAK mode:**\n- Reads roles from a flat `roles` claim (not nested `realm_access.roles`)\n- Reads permissions from a flat `permissions` claim\n- Claim names are configurable via `security.oauth2.*` properties\n\n**Testing with Keycloak tokens:**\nSince Keycloak nests roles in `realm_access`, OAUTH2 mode will see empty roles/permissions.\nThis demonstrates why KEYCLOAK mode exists.\n\n**For real OAUTH2 testing**, use an IdP that puts roles in flat claims (Auth0, Okta with custom rules), or add a Keycloak protocol mapper that copies realm_access.roles to a flat `roles` claim.\n\n**Configurable claims:**\n```\nsecurity.oauth2.username-claim=preferred_username\nsecurity.oauth2.user-id-claim=sub\nsecurity.oauth2.roles-claim=roles\nsecurity.oauth2.permissions-claim=permissions\n```",
+			"item": [
+				{
+					"name": "Get Token from OIDC Provider",
+					"description": "Using Keycloak as an example OIDC provider.\nReplace with your IdP's token endpoint for production use.",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "client_id",  "value": "{{keycloak_client_id}}" },
+								{ "key": "grant_type", "value": "password" },
+								{ "key": "username",   "value": "alice" },
+								{ "key": "password",   "value": "alice123" }
+							]
+						},
+						"url": {
+							"raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+							"host": ["{{keycloak_url}}"],
+							"path": ["realms", "{{keycloak_realm}}", "protocol", "openid-connect", "token"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('OIDC token obtained', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('access_token', json.access_token);",
+									"    pm.collectionVariables.set('alice_token', json.access_token);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "GET /me — flat claims extraction",
+					"description": "With Keycloak tokens: username ✅ (preferred_username), userId ✅ (sub), roles [] (nested in realm_access), permissions [] (no flat claim).\n\nWith Auth0/Okta: all fields populated if custom claims are configured.",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('OAUTH2 extracts username and userId from flat claims', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.username).to.be.a('string');",
+									"    pm.expect(json.userId).to.be.a('string');",
+									"    // With Keycloak tokens, roles will be empty (nested structure)",
+									"    // With a flat-claim IdP, roles would be populated",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "POST /posts — roles empty → 403",
+					"description": "Demonstrates that OAUTH2 mode with Keycloak tokens can't find roles (they're nested). This is why KEYCLOAK mode exists.",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{alice_token}}" },
+							{ "key": "Content-Type",  "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Test\",\n  \"content\": \"Should fail with Keycloak tokens in OAUTH2 mode\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/posts", "host": ["{{base_url}}"], "path": ["posts"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('No flat roles claim → 403 (expected with Keycloak tokens)', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().actual).to.eql([]);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "@RequireOwner — other user's profile → 403",
+					"request": {
+						"method": "GET",
+						"header": [{ "key": "Authorization", "value": "Bearer {{alice_token}}" }],
+						"url": { "raw": "{{base_url}}/profile/some-other-user-id", "host": ["{{base_url}}"], "path": ["profile", "some-other-user-id"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Ownership check works in OAUTH2 mode', function () {",
+									"    pm.response.to.have.status(403);",
+									"    pm.expect(pm.response.json().type).to.eql('OWNERSHIP');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "No Auth → /me — 401",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthenticated returns 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
