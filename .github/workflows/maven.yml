@@ -22,7 +22,7 @@ jobs:
           cache: maven
 
       - name: Build and Test with Maven
-        run: mvn -B clean verify
+        run: mvn -B clean verify -Dgpg.skip=true --projects security-core,security-autoconfigure,security-starter,security-test --also-make
 
       - name: Upload Test Reports
         if: always()
