@@ -22,9 +22,9 @@
         No filters, no JWT wiring, no SecurityFilterChain needed.
         All components are fully overridable via Spring Boot auto-configuration (@ConditionalOnMissingBean).
         Built-in endpoints: POST /login, POST /refresh, POST /logout.
-        GitHub: https://github.com/AdepuSriCharan/spring-security-explainer
+        GitHub: https://github.com/AdepuSriCharan/spring-security-starter
     </description>
-    <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+    <url>https://github.com/AdepuSriCharan/spring-security-starter</url>
 
     <licenses>
         <license>
@@ -44,15 +44,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-explainer.git</connection>
-        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-explainer.git</developerConnection>
-        <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-starter.git</connection>
+        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-starter.git</developerConnection>
+        <url>https://github.com/AdepuSriCharan/spring-security-starter</url>
         <tag>v1.1.0</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub Issues</system>
-        <url>https://github.com/AdepuSriCharan/spring-security-explainer/issues</url>
+        <url>https://github.com/AdepuSriCharan/spring-security-starter/issues</url>
     </issueManagement>
 
     <dependencies>

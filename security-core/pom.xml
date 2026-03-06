@@ -19,9 +19,9 @@
         authorization annotations (@RequireRole, @RequirePermission, @RequireOwner),
         AuthenticatedUser model, SecurityUserContext (ThreadLocal access), and exception types.
         Depend on this directly only if you are building custom adapters or extensions.
-        GitHub: https://github.com/AdepuSriCharan/spring-security-explainer
+        GitHub: https://github.com/AdepuSriCharan/spring-security-starter
     </description>
-    <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+    <url>https://github.com/AdepuSriCharan/spring-security-starter</url>
 
     <licenses>
         <license>
@@ -41,15 +41,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-explainer.git</connection>
-        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-explainer.git</developerConnection>
-        <url>https://github.com/AdepuSriCharan/spring-security-explainer</url>
+        <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-starter.git</connection>
+        <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-starter.git</developerConnection>
+        <url>https://github.com/AdepuSriCharan/spring-security-starter</url>
         <tag>v1.1.0</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub Issues</system>
-        <url>https://github.com/AdepuSriCharan/spring-security-explainer/issues</url>
+        <url>https://github.com/AdepuSriCharan/spring-security-starter/issues</url>
     </issueManagement>
 
     <dependencies>
