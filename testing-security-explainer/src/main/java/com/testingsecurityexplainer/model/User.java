@@ -2,7 +2,12 @@ package com.testingsecurityexplainer.model;
 
 import com.sricharan.security.core.account.UserAccount;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * JPA entity that represents a user stored in the database.
@@ -10,6 +15,8 @@ import java.util.Set;
  */
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User implements UserAccount {
 
     @Id
@@ -22,10 +29,13 @@ public class User implements UserAccount {
     @Column(nullable = false)
     private String password;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"))
@@ -35,7 +45,7 @@ public class User implements UserAccount {
     // Required by JPA
     protected User() {}
 
-    public User(String username, String password, Set<String> roles, Set<String> permissions) {
+    public User(String username, String password, Set<Role> roles, Set<String> permissions) {
         this.username = username;
         this.password = password;
         this.roles = roles;
@@ -45,6 +55,13 @@ public class User implements UserAccount {
     @Override public String getId() { return id; }
     @Override public String getUsername() { return username; }
     @Override public String getPassword() { return password; }
-    @Override public Set<String> getRoles() { return roles; }
+    
+    @Override 
+    public Set<String> getRoles() { 
+        return roles.stream()
+                .map(role -> role.getName().name())
+                .collect(Collectors.toSet()); 
+    }
+    
     @Override public Set<String> getPermissions() { return permissions; }
 }
