@@ -1,2 +1,3 @@
 com.sricharan.security.autoconfigure.SecurityAutoConfiguration
+com.sricharan.security.autoconfigure.RedisRefreshTokenAutoConfiguration
 com.sricharan.security.autoconfigure.ExternalProviderAutoConfiguration

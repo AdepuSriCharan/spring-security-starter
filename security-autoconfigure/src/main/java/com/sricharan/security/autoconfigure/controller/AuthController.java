@@ -105,24 +105,21 @@ public class AuthController {
             // 1. Verify the JWT signature and expiry
             String username = jwtService.verifyRefreshToken(request.getRefreshToken());
 
-            // 2. Check the token store (revocation / replay detection)
+            // 2. Atomically consume the token for rotation
             String tokenHash = TokenHashUtil.sha256(request.getRefreshToken());
-            if (!refreshTokenStore.isValid(tokenHash)) {
+            if (!refreshTokenStore.consumeForRotation(tokenHash)) {
                 // Token was already used or revoked — possible theft
                 return errorResponse(HttpStatus.UNAUTHORIZED,
                         "Refresh token has been revoked. Please log in again.");
             }
 
-            // 3. Revoke the old token (rotation)
-            refreshTokenStore.revoke(tokenHash);
-
-            // 4. Re-fetch the user to get fresh roles/permissions
+            // 3. Re-fetch the user to get fresh roles/permissions
             Optional<UserAccount> userOpt = provider.findByUsername(username);
             if (userOpt.isEmpty()) {
                 return errorResponse(HttpStatus.UNAUTHORIZED, "User no longer exists.");
             }
 
-            // 5. Issue new token pair
+            // 4. Issue new token pair
             return ResponseEntity.ok(issueAndStoreTokenPair(userOpt.get()));
 
         } catch (JWTVerificationException e) {

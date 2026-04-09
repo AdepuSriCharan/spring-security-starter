@@ -20,6 +20,7 @@ A zero-configuration Spring Boot starter that provides **JWT authentication, rol
 - Permission-based authorization — `@RequirePermission`
 - Ownership authorization using SpEL — `@RequireOwner`
 - Refresh token rotation with replay-attack detection
+- Redis-backed scalable refresh-token store (opt-in)
 - Structured JSON error responses (401 & 403)
 - `@ConditionalOnMissingBean` on all beans — fully overridable
 - No `ClassNotFoundException` when `spring-boot-starter-oauth2-resource-server` is absent
@@ -244,6 +245,19 @@ public class JpaRefreshTokenStore implements RefreshTokenStore {
 
 Spring replaces the default automatically when your bean exists.
 
+**Built-in scalable mode (Redis, opt-in)**:
+
+```properties
+security.refresh.store-mode=REDIS
+security.refresh.redis.key-prefix=security:refresh
+
+# standard Spring Redis properties
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+```
+
+If `security.refresh.store-mode=REDIS` is set without Redis support, startup fails fast with a clear error.
+
 ---
 
 # Overriding Defaults
@@ -285,6 +299,8 @@ AuthenticatedUser user = SecurityUserContext.requireCurrentUser(); // throws if 
 | `security.jwt.refresh-expiration-ms` | `604800000` | Refresh token TTL (7 days) |
 | `security.jwt.issuer` | — | JWT `iss` claim value |
 | `security.public-endpoints` | — | Comma-separated public paths |
+| `security.refresh.store-mode` | `INMEMORY` | Refresh token backend: `INMEMORY` or `REDIS` |
+| `security.refresh.redis.key-prefix` | `security:refresh` | Redis key prefix for refresh-token storage |
 | `security.oauth2.issuer-uri` | — | Required for OAUTH2 / KEYCLOAK |
 | `security.oauth2.jwk-set-uri` | — | Alternative to `issuer-uri` |
 | `security.oauth2.keycloak-client-id` | — | Required for KEYCLOAK client role extraction |
@@ -301,6 +317,7 @@ AuthenticatedUser user = SecurityUserContext.requireCurrentUser(); // throws if 
 - Store secrets in environment variables, never in source control
 - Always use HTTPS in production
 - Replace `InMemoryRefreshTokenStore` in clustered deployments
+- Use `security.refresh.store-mode=REDIS` for high concurrency / multi-instance deployments
 - Keep access token lifetime short (≤ 1 hour)
 
 ---

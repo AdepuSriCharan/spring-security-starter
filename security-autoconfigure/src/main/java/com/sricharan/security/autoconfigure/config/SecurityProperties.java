@@ -81,6 +81,11 @@ public class SecurityProperties {
      */
     private final KeycloakClaims keycloak = new KeycloakClaims();
 
+    /**
+     * Refresh-token store settings.
+     */
+    private final Refresh refresh = new Refresh();
+
     public AuthMode getAuthMode() {
         return authMode;
     }
@@ -103,6 +108,10 @@ public class SecurityProperties {
 
     public KeycloakClaims getKeycloak() {
         return keycloak;
+    }
+
+    public Refresh getRefresh() {
+        return refresh;
     }
 
     /**
@@ -197,5 +206,63 @@ public class SecurityProperties {
 
         public String getRolesKey() { return rolesKey; }
         public void setRolesKey(String rolesKey) { this.rolesKey = rolesKey; }
+    }
+
+    /**
+     * Refresh-token storage configuration.
+     *
+     * <pre>
+     * security:
+     *   refresh:
+     *     store-mode: INMEMORY
+     *     redis:
+     *       key-prefix: security:refresh
+     * </pre>
+     */
+    public static class Refresh {
+
+        /**
+         * Where refresh tokens are stored.
+         * {@code INMEMORY} is the backward-compatible default.
+         */
+        private RefreshStoreMode storeMode = RefreshStoreMode.INMEMORY;
+
+        /**
+         * Redis-specific settings used when {@code store-mode=REDIS}.
+         */
+        private final Redis redis = new Redis();
+
+        public RefreshStoreMode getStoreMode() {
+            return storeMode;
+        }
+
+        public void setStoreMode(RefreshStoreMode storeMode) {
+            this.storeMode = storeMode;
+        }
+
+        public Redis getRedis() {
+            return redis;
+        }
+    }
+
+    public enum RefreshStoreMode {
+        INMEMORY,
+        REDIS
+    }
+
+    public static class Redis {
+
+        /**
+         * Prefix for redis keys used by refresh-token storage.
+         */
+        private String keyPrefix = "security:refresh";
+
+        public String getKeyPrefix() {
+            return keyPrefix;
+        }
+
+        public void setKeyPrefix(String keyPrefix) {
+            this.keyPrefix = keyPrefix;
+        }
     }
 }

@@ -42,6 +42,30 @@ public interface RefreshTokenStore {
     boolean isValid(String tokenHash);
 
     /**
+     * Atomically consumes a refresh token for rotation.
+     *
+     * <p>Contract:
+     * <ul>
+     *   <li>Returns {@code true} only once for a valid token.</li>
+     *   <li>Marks that token as revoked so reuse is rejected.</li>
+     *   <li>Returns {@code false} if missing, expired, already revoked, or replayed.</li>
+     * </ul>
+     *
+     * <p>Default implementation preserves backward compatibility for existing stores.
+     * High-concurrency stores (for example Redis) should override with an atomic implementation.
+     *
+     * @param tokenHash SHA-256 hash of the raw refresh token.
+     * @return {@code true} if the token was valid and successfully consumed for rotation.
+     */
+    default boolean consumeForRotation(String tokenHash) {
+        if (!isValid(tokenHash)) {
+            return false;
+        }
+        revoke(tokenHash);
+        return true;
+    }
+
+    /**
      * Revokes a single refresh token by its hash.
      *
      * <p>Called during token rotation to invalidate the old token.

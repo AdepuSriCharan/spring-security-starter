@@ -23,6 +23,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -38,6 +39,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.util.ClassUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -126,6 +128,18 @@ public class SecurityAutoConfiguration {
                         + "or\n"
                         + "  spring.security.oauth2.resourceserver.jwt.jwk-set-uri=<your-jwks-url>\n"
                         + "Configure one of these in application.properties.");
+            }
+        }
+
+        if (mode == AuthMode.INTERNAL
+                && securityProperties.getRefresh().getStoreMode() == SecurityProperties.RefreshStoreMode.REDIS) {
+            boolean redisClassPresent = ClassUtils.isPresent(
+                    "org.springframework.data.redis.core.StringRedisTemplate",
+                    ClassUtils.getDefaultClassLoader());
+            if (!redisClassPresent) {
+                throw new IllegalStateException(
+                        "security.refresh.store-mode=REDIS requires Redis support on the classpath.\n"
+                                + "Add dependency: org.springframework.boot:spring-boot-starter-data-redis");
             }
         }
     }
@@ -221,6 +235,7 @@ public class SecurityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "INTERNAL", matchIfMissing = true)
+    @ConditionalOnExpression("'${security.refresh.store-mode:INMEMORY}'.equals('INMEMORY')")
     public RefreshTokenStore refreshTokenStore() {
         return new InMemoryRefreshTokenStore();
     }
@@ -303,4 +318,3 @@ public class SecurityAutoConfiguration {
         return http;
     }
 }
-
