@@ -47,7 +47,7 @@ testing-security-explainer/ → Demo app (INTERNAL / KEYCLOAK / OAUTH2)
 <dependency>
     <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -257,6 +257,31 @@ spring.data.redis.port=6379
 ```
 
 If `security.refresh.store-mode=REDIS` is set without Redis support, startup fails fast with a clear error.
+
+### Verify Redis Is Actually Used
+
+1. Login once to generate a refresh token.
+2. Hash the refresh token (only hash is stored, never raw token):
+
+```bash
+echo -n '<REFRESH_TOKEN>' | sha256sum
+```
+
+3. Inspect Redis keys:
+
+```bash
+redis-cli --scan --pattern 'security:refresh:*'
+```
+
+You should see:
+- `security:refresh:token:<sha256>`
+- `security:refresh:user:<userId>:tokens`
+
+4. Call `/refresh` with the old token, then scan again:
+- old token key remains but marked revoked
+- new token hash key appears
+
+This confirms rotation + replay protection is being persisted in Redis.
 
 ---
 
