@@ -12,13 +12,20 @@ import com.sricharan.security.autoconfigure.handler.JsonAuthenticationEntryPoint
 import com.sricharan.security.autoconfigure.handler.SecurityExceptionHandler;
 import com.sricharan.security.autoconfigure.jwt.JwtProperties;
 import com.sricharan.security.autoconfigure.jwt.JwtService;
+import com.sricharan.security.autoconfigure.observability.JsonSecurityAuditSink;
+import com.sricharan.security.autoconfigure.observability.MicrometerSecurityMetricsRecorder;
+import com.sricharan.security.autoconfigure.observability.NoOpSecurityMetricsRecorder;
+import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
+import com.sricharan.security.autoconfigure.observability.SecurityMetricsRecorder;
 import com.sricharan.security.autoconfigure.token.InMemoryRefreshTokenStore;
 import com.sricharan.security.core.account.UserAccountProvider;
 import com.sricharan.security.core.adapter.AuthenticationAdapter;
+import com.sricharan.security.core.audit.SecurityAuditSink;
 import com.sricharan.security.core.authorization.AuthorizationManager;
 import com.sricharan.security.core.authorization.DefaultAuthorizationManager;
 import com.sricharan.security.core.config.AuthMode;
 import com.sricharan.security.core.token.RefreshTokenStore;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -40,6 +47,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.util.ClassUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -172,26 +180,58 @@ public class SecurityAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public SecurityExceptionHandler securityExceptionHandler() {
-        return new SecurityExceptionHandler();
+    public SecurityExceptionHandler securityExceptionHandler(SecurityEventRecorder securityEventRecorder) {
+        return new SecurityExceptionHandler(securityEventRecorder);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public AuthenticationEntryPoint authenticationEntryPoint() {
-        return new JsonAuthenticationEntryPoint();
+    public AuthenticationEntryPoint authenticationEntryPoint(SecurityEventRecorder securityEventRecorder) {
+        return new JsonAuthenticationEntryPoint(securityEventRecorder);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public AccessDeniedHandler accessDeniedHandler() {
-        return new JsonAccessDeniedHandler();
+    public AccessDeniedHandler accessDeniedHandler(SecurityEventRecorder securityEventRecorder) {
+        return new JsonAccessDeniedHandler(securityEventRecorder);
     }
 
     @Bean
     @ConditionalOnMissingBean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SecurityAuditSink securityAuditSink(
+            SecurityProperties securityProperties,
+            ObjectProvider<ObjectMapper> objectMapperProvider) {
+        if (!securityProperties.getSecurityEvents().isEnabled()) {
+            return event -> {
+                // no-op
+            };
+        }
+        ObjectMapper objectMapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
+        return new JsonSecurityAuditSink(objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SecurityMetricsRecorder securityMetricsRecorder(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+        if (meterRegistry == null) {
+            return new NoOpSecurityMetricsRecorder();
+        }
+        return new MicrometerSecurityMetricsRecorder(meterRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SecurityEventRecorder securityEventRecorder(
+            SecurityAuditSink securityAuditSink,
+            SecurityMetricsRecorder securityMetricsRecorder) {
+        return new SecurityEventRecorder(securityAuditSink, securityMetricsRecorder);
     }
 
     @Bean
@@ -248,8 +288,9 @@ public class SecurityAutoConfiguration {
             ObjectProvider<UserAccountProvider> userAccountProviderRef,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenStore refreshTokenStore) {
-        return new AuthController(userAccountProviderRef, passwordEncoder, jwtService, refreshTokenStore);
+            RefreshTokenStore refreshTokenStore,
+            SecurityEventRecorder securityEventRecorder) {
+        return new AuthController(userAccountProviderRef, passwordEncoder, jwtService, refreshTokenStore, securityEventRecorder);
     }
 
     /**

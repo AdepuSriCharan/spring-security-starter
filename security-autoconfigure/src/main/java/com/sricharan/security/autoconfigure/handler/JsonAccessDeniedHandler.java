@@ -1,5 +1,7 @@
 package com.sricharan.security.autoconfigure.handler;
 
+import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
+import com.sricharan.security.core.audit.SecurityAuditEventType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -7,6 +9,8 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Returns a structured JSON response when an authenticated user lacks
@@ -26,10 +30,22 @@ import java.time.Instant;
  */
 public class JsonAccessDeniedHandler implements AccessDeniedHandler {
 
+    private final SecurityEventRecorder securityEventRecorder;
+
+    public JsonAccessDeniedHandler(SecurityEventRecorder securityEventRecorder) {
+        this.securityEventRecorder = securityEventRecorder;
+    }
+
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
+
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("path", request.getRequestURI());
+        details.put("method", request.getMethod());
+        details.put("reason", "insufficient_permissions");
+        securityEventRecorder.record(SecurityAuditEventType.ACCESS_DENIED, "FAILURE", null, null, details);
 
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json");

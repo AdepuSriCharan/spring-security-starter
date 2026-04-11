@@ -86,6 +86,11 @@ public class SecurityProperties {
      */
     private final Refresh refresh = new Refresh();
 
+    /**
+     * Security event publishing settings.
+     */
+    private final SecurityEvents securityEvents = new SecurityEvents();
+
     public AuthMode getAuthMode() {
         return authMode;
     }
@@ -112,6 +117,10 @@ public class SecurityProperties {
 
     public Refresh getRefresh() {
         return refresh;
+    }
+
+    public SecurityEvents getSecurityEvents() {
+        return securityEvents;
     }
 
     /**
@@ -263,6 +272,25 @@ public class SecurityProperties {
 
         public void setKeyPrefix(String keyPrefix) {
             this.keyPrefix = keyPrefix;
+        }
+    }
+
+    /**
+     * Security event controls.
+     */
+    public static class SecurityEvents {
+
+        /**
+         * Enables built-in security audit events.
+         */
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 }

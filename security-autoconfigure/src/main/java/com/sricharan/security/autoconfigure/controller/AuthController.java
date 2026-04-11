@@ -3,9 +3,11 @@ package com.sricharan.security.autoconfigure.controller;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sricharan.security.autoconfigure.jwt.JwtService;
 import com.sricharan.security.autoconfigure.jwt.TokenResponse;
+import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
 import com.sricharan.security.autoconfigure.token.TokenHashUtil;
 import com.sricharan.security.core.account.UserAccount;
 import com.sricharan.security.core.account.UserAccountProvider;
+import com.sricharan.security.core.audit.SecurityAuditEventType;
 import com.sricharan.security.core.token.RefreshTokenStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -43,16 +45,19 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenStore refreshTokenStore;
+    private final SecurityEventRecorder securityEventRecorder;
 
     public AuthController(
             ObjectProvider<UserAccountProvider> userAccountProviderRef,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenStore refreshTokenStore) {
+            RefreshTokenStore refreshTokenStore,
+            SecurityEventRecorder securityEventRecorder) {
         this.userAccountProviderRef = userAccountProviderRef;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenStore = refreshTokenStore;
+        this.securityEventRecorder = securityEventRecorder;
     }
 
     // ── Login ──────────────────────────────────────────────
@@ -74,15 +79,21 @@ public class AuthController {
         Optional<UserAccount> userOpt = provider.findByUsername(request.getUsername());
 
         if (userOpt.isEmpty()) {
+            securityEventRecorder.record(
+                    SecurityAuditEventType.LOGIN_FAILURE, "FAILURE", null, request.getUsername(), Map.of("reason", "user_not_found"));
             return errorResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password.");
         }
 
         UserAccount user = userOpt.get();
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            securityEventRecorder.record(
+                    SecurityAuditEventType.LOGIN_FAILURE, "FAILURE", user.getId(), user.getUsername(), Map.of("reason", "password_mismatch"));
             return errorResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password.");
         }
 
+        securityEventRecorder.record(
+                SecurityAuditEventType.LOGIN_SUCCESS, "SUCCESS", user.getId(), user.getUsername(), Map.of());
         return ResponseEntity.ok(issueAndStoreTokenPair(user));
     }
 
@@ -102,6 +113,7 @@ public class AuthController {
         }
 
         try {
+            long started = System.nanoTime();
             // 1. Verify the JWT signature and expiry
             String username = jwtService.verifyRefreshToken(request.getRefreshToken());
 
@@ -109,6 +121,12 @@ public class AuthController {
             String tokenHash = TokenHashUtil.sha256(request.getRefreshToken());
             if (!refreshTokenStore.consumeForRotation(tokenHash)) {
                 // Token was already used or revoked — possible theft
+                securityEventRecorder.record(
+                        SecurityAuditEventType.REFRESH_REPLAY_DETECTED,
+                        "FAILURE",
+                        null,
+                        username,
+                        Map.of("reason", "token_revoked_or_replayed"));
                 return errorResponse(HttpStatus.UNAUTHORIZED,
                         "Refresh token has been revoked. Please log in again.");
             }
@@ -116,13 +134,22 @@ public class AuthController {
             // 3. Re-fetch the user to get fresh roles/permissions
             Optional<UserAccount> userOpt = provider.findByUsername(username);
             if (userOpt.isEmpty()) {
+                securityEventRecorder.record(
+                        SecurityAuditEventType.REFRESH_FAILURE, "FAILURE", null, username, Map.of("reason", "user_not_found"));
                 return errorResponse(HttpStatus.UNAUTHORIZED, "User no longer exists.");
             }
 
             // 4. Issue new token pair
-            return ResponseEntity.ok(issueAndStoreTokenPair(userOpt.get()));
+            UserAccount user = userOpt.get();
+            securityEventRecorder.record(
+                    SecurityAuditEventType.REFRESH_SUCCESS, "SUCCESS", user.getId(), user.getUsername(), Map.of());
+            long elapsed = System.nanoTime() - started;
+            securityEventRecorder.recordRefreshLatencyNanos(elapsed, "SUCCESS");
+            return ResponseEntity.ok(issueAndStoreTokenPair(user));
 
         } catch (JWTVerificationException e) {
+            securityEventRecorder.record(
+                    SecurityAuditEventType.REFRESH_FAILURE, "FAILURE", null, null, Map.of("reason", "invalid_or_expired_token"));
             return errorResponse(HttpStatus.UNAUTHORIZED,
                     "Invalid or expired refresh token.");
         }
@@ -139,6 +166,10 @@ public class AuthController {
 
         String tokenHash = TokenHashUtil.sha256(request.getRefreshToken());
         refreshTokenStore.revoke(tokenHash);
+        securityEventRecorder.record(
+                SecurityAuditEventType.LOGOUT, "SUCCESS", null, null, Map.of("action", "single_token_revoke"));
+        securityEventRecorder.record(
+                SecurityAuditEventType.SESSION_REVOKED, "SUCCESS", null, null, Map.of("scope", "single_token"));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", "Logged out successfully.");

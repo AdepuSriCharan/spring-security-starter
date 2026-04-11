@@ -21,6 +21,8 @@ A zero-configuration Spring Boot starter that provides **JWT authentication, rol
 - Ownership authorization using SpEL — `@RequireOwner`
 - Refresh token rotation with replay-attack detection
 - Redis-backed scalable refresh-token store (opt-in)
+- Security audit events with structured JSON logs
+- Micrometer metrics for auth and refresh flows
 - Structured JSON error responses (401 & 403)
 - `@ConditionalOnMissingBean` on all beans — fully overridable
 - No `ClassNotFoundException` when `spring-boot-starter-oauth2-resource-server` is absent
@@ -297,6 +299,7 @@ All components use `@ConditionalOnMissingBean`. Declare your own `@Bean` to over
 | `SecurityFilterChain`   | Stateless JWT chain              |
 | `AuthenticationAdapter` | JWT + SpringSecurity adapters    |
 | `SecurityContextFilter` | ThreadLocal propagation filter   |
+| `SecurityAuditSink`     | JSON structured logger           |
 | Exception Handlers      | Structured JSON responses        |
 
 ---
@@ -326,6 +329,7 @@ AuthenticatedUser user = SecurityUserContext.requireCurrentUser(); // throws if 
 | `security.public-endpoints` | — | Comma-separated public paths |
 | `security.refresh.store-mode` | `INMEMORY` | Refresh token backend: `INMEMORY` or `REDIS` |
 | `security.refresh.redis.key-prefix` | `security:refresh` | Redis key prefix for refresh-token storage |
+| `security.security-events.enabled` | `true` | Enable/disable built-in security audit event publishing |
 | `security.oauth2.issuer-uri` | — | Required for OAUTH2 / KEYCLOAK |
 | `security.oauth2.jwk-set-uri` | — | Alternative to `issuer-uri` |
 | `security.oauth2.keycloak-client-id` | — | Required for KEYCLOAK client role extraction |

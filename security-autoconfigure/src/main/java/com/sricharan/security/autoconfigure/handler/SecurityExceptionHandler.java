@@ -1,5 +1,7 @@
 package com.sricharan.security.autoconfigure.handler;
 
+import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
+import com.sricharan.security.core.audit.SecurityAuditEventType;
 import com.sricharan.security.core.exception.SecurityAuthorizationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,12 @@ import java.util.Set;
 @RestControllerAdvice
 public class SecurityExceptionHandler {
 
+    private final SecurityEventRecorder securityEventRecorder;
+
+    public SecurityExceptionHandler(SecurityEventRecorder securityEventRecorder) {
+        this.securityEventRecorder = securityEventRecorder;
+    }
+
     @ExceptionHandler(SecurityAuthorizationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthorizationException(
             SecurityAuthorizationException ex) {
@@ -47,6 +55,12 @@ public class SecurityExceptionHandler {
         }
 
         body.put("timestamp", Instant.now().toString());
+        securityEventRecorder.record(
+                SecurityAuditEventType.ACCESS_DENIED,
+                "FAILURE",
+                null,
+                null,
+                Map.of("type", ex.getType().name()));
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
@@ -64,6 +78,12 @@ public class SecurityExceptionHandler {
             body.put("error", "UNAUTHORIZED");
             body.put("message", "Authentication required to access this resource");
             body.put("timestamp", Instant.now().toString());
+            securityEventRecorder.record(
+                    SecurityAuditEventType.UNAUTHORIZED,
+                    "FAILURE",
+                    null,
+                    null,
+                    Map.of("reason", "missing_security_user_context"));
 
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
         }
