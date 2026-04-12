@@ -13,7 +13,6 @@ import com.sricharan.security.autoconfigure.handler.SecurityExceptionHandler;
 import com.sricharan.security.autoconfigure.jwt.JwtProperties;
 import com.sricharan.security.autoconfigure.jwt.JwtService;
 import com.sricharan.security.autoconfigure.observability.JsonSecurityAuditSink;
-import com.sricharan.security.autoconfigure.observability.MicrometerSecurityMetricsRecorder;
 import com.sricharan.security.autoconfigure.observability.NoOpSecurityMetricsRecorder;
 import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
 import com.sricharan.security.autoconfigure.observability.SecurityMetricsRecorder;
@@ -25,7 +24,6 @@ import com.sricharan.security.core.authorization.AuthorizationManager;
 import com.sricharan.security.core.authorization.DefaultAuthorizationManager;
 import com.sricharan.security.core.config.AuthMode;
 import com.sricharan.security.core.token.RefreshTokenStore;
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -46,6 +44,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.context.ApplicationContext;
 import org.springframework.util.ClassUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -218,12 +217,24 @@ public class SecurityAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public SecurityMetricsRecorder securityMetricsRecorder(ObjectProvider<MeterRegistry> meterRegistryProvider) {
-        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
-        if (meterRegistry == null) {
+    public SecurityMetricsRecorder securityMetricsRecorder(ApplicationContext applicationContext) {
+        try {
+            Class<?> meterRegistryClass = Class.forName("io.micrometer.core.instrument.MeterRegistry");
+            Object meterRegistry = applicationContext.getBeanProvider(meterRegistryClass).getIfAvailable();
+            if (meterRegistry == null) {
+                return new NoOpSecurityMetricsRecorder();
+            }
+
+            Class<?> recorderClass = Class.forName(
+                    "com.sricharan.security.autoconfigure.observability.MicrometerSecurityMetricsRecorder");
+            return (SecurityMetricsRecorder) recorderClass
+                    .getConstructor(meterRegistryClass)
+                    .newInstance(meterRegistry);
+        } catch (ClassNotFoundException e) {
+            return new NoOpSecurityMetricsRecorder();
+        } catch (ReflectiveOperationException e) {
             return new NoOpSecurityMetricsRecorder();
         }
-        return new MicrometerSecurityMetricsRecorder(meterRegistry);
     }
 
     @Bean
