@@ -49,7 +49,7 @@ testing-security-explainer/ → Demo app (INTERNAL / KEYCLOAK / OAUTH2)
 <dependency>
     <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
 </dependency>
 ```
 
@@ -284,6 +284,23 @@ You should see:
 - new token hash key appears
 
 This confirms rotation + replay protection is being persisted in Redis.
+
+---
+
+### Demo Observability Evidence Pack
+
+The demo app includes a reproducible learner pack under [`testing-security-explainer/logs`](/run/media/sricharan.adepu/Sri_Charan/spring-security-explainer/testing-security-explainer/logs):
+
+- `README.md` for guided interpretation
+- `http-cases-summary.txt` for expected HTTP outcomes
+- `security-audit-events.txt` for structured security audit evidence
+- `cases/*.code` and `cases/*.json` for each API scenario
+
+Regenerate all artifacts:
+
+```bash
+bash testing-security-explainer/logs/reproduce.sh
+```
 
 ---
 

@@ -1,0 +1,20 @@
+=== Test Run 2026-04-21T19:48:31+05:30 ===
+user=user1776781111
+admin=admin1776781111
+
+HTTP codes
+register-user=201
+register-admin=201
+login-user-fail=401
+login-user-ok=200
+login-admin-ok=200
+me-no-token=401
+admin-users-forbidden=403
+admin-users-ok=200
+profile-owner-ok=200
+profile-owner-forbidden=403
+refresh-user-ok=200
+refresh-user-replay=401
+logout-user=200
+refresh-after-logout=401
+refresh-invalid-token=401

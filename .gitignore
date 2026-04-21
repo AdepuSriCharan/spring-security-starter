@@ -35,6 +35,12 @@ buildNumber.properties
 # === Logs ===
 *.log
 logs/
+!testing-security-explainer/logs/
+!testing-security-explainer/logs/**/*.md
+!testing-security-explainer/logs/**/*.txt
+!testing-security-explainer/logs/**/*.json
+!testing-security-explainer/logs/**/*.code
+!testing-security-explainer/logs/**/*.sh
 
 # === Spring Boot ===
 application-local.properties

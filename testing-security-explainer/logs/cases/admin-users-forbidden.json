@@ -1,0 +1,1 @@
+{"error":"FORBIDDEN","message":"Access denied for user 'user1776781111'. Required role: [ADMIN]. User has: [DEFAULT]","type":"ROLE","required":["ADMIN"],"actual":["DEFAULT"],"timestamp":"2026-04-21T14:18:31.720369274Z"}
