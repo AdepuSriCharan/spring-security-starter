@@ -71,7 +71,8 @@ public class AuthController {
                     "No UserAccountProvider configured in the application context.");
         }
 
-        if (request.getUsername() == null || request.getPassword() == null) {
+        if (request == null || request.getUsername() == null || request.getUsername().isBlank()
+                || request.getPassword() == null || request.getPassword().isBlank()) {
             return errorResponse(HttpStatus.BAD_REQUEST,
                     "Username and password are required.");
         }
@@ -108,7 +109,7 @@ public class AuthController {
                     "No UserAccountProvider configured.");
         }
 
-        if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+        if (request == null || request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
             return errorResponse(HttpStatus.BAD_REQUEST, "Refresh token is required.");
         }
 
@@ -160,7 +161,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody RefreshRequest request) {
 
-        if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+        if (request == null || request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
             return errorResponse(HttpStatus.BAD_REQUEST, "Refresh token is required.");
         }
 
