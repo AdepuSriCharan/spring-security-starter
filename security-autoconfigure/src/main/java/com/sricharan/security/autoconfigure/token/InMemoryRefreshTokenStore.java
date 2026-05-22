@@ -1,10 +1,12 @@
 package com.sricharan.security.autoconfigure.token;
 
 import com.sricharan.security.core.token.RefreshTokenStore;
+import com.sricharan.security.core.token.RefreshSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -70,6 +72,30 @@ public class InMemoryRefreshTokenStore implements RefreshTokenStore {
     public void revokeAllForUser(String userId) {
         tokens.entrySet().removeIf(e -> e.getValue().userId().equals(userId));
         log.info("Revoked ALL refresh tokens for user '{}'", userId);
+    }
+
+    @Override
+    public List<RefreshSession> listActiveSessions(String userId) {
+        purgeExpired();
+        return tokens.entrySet().stream()
+                .filter(entry -> entry.getValue().userId().equals(userId))
+                .filter(entry -> !entry.getValue().revoked())
+                .map(entry -> new RefreshSession(entry.getKey(), userId, entry.getValue().expiresAt()))
+                .sorted((a, b) -> a.expiresAt().compareTo(b.expiresAt()))
+                .toList();
+    }
+
+    @Override
+    public boolean revokeSession(String userId, String sessionId) {
+        TokenEntry entry = tokens.get(sessionId);
+        if (entry == null || !entry.userId().equals(userId)) {
+            return false;
+        }
+        if (entry.revoked()) {
+            return false;
+        }
+        tokens.put(sessionId, new TokenEntry(entry.userId(), entry.expiresAt(), true));
+        return true;
     }
 
     /**

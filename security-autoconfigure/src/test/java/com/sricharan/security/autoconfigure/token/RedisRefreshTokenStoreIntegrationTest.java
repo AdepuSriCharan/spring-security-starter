@@ -131,6 +131,30 @@ class RedisRefreshTokenStoreIntegrationTest {
         assertThat(store.isValid("token-a")).isFalse();
     }
 
+    @Test
+    void listActiveSessionsReturnsOnlyNonRevokedTokens() {
+        RedisRefreshTokenStore store = newStore();
+        store.store("user-1", "token-a", Instant.now().plusSeconds(60));
+        store.store("user-1", "token-b", Instant.now().plusSeconds(60));
+        store.store("user-2", "token-c", Instant.now().plusSeconds(60));
+        store.revoke("token-b");
+
+        assertThat(store.listActiveSessions("user-1"))
+                .extracting(session -> session.sessionId())
+                .containsExactly("token-a");
+    }
+
+    @Test
+    void revokeSessionValidatesOwnership() {
+        RedisRefreshTokenStore store = newStore();
+        store.store("user-1", "token-a", Instant.now().plusSeconds(60));
+
+        assertThat(store.revokeSession("user-2", "token-a")).isFalse();
+        assertThat(store.revokeSession("user-1", "missing")).isFalse();
+        assertThat(store.revokeSession("user-1", "token-a")).isTrue();
+        assertThat(store.isValid("token-a")).isFalse();
+    }
+
     private RedisRefreshTokenStore newStore() {
         connectionFactory = new LettuceConnectionFactory(REDIS.getHost(), REDIS.getMappedPort(6379));
         connectionFactory.afterPropertiesSet();

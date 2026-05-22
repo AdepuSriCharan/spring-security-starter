@@ -5,6 +5,7 @@ import com.sricharan.security.autoconfigure.adapter.SpringSecurityAuthentication
 import com.sricharan.security.autoconfigure.aspect.AuthorizationAspect;
 import com.sricharan.security.autoconfigure.config.SecurityProperties;
 import com.sricharan.security.autoconfigure.controller.AuthController;
+import com.sricharan.security.autoconfigure.controller.SessionAdminController;
 import com.sricharan.security.autoconfigure.filter.JwtAuthenticationFilter;
 import com.sricharan.security.autoconfigure.filter.SecurityContextFilter;
 import com.sricharan.security.autoconfigure.handler.JsonAccessDeniedHandler;
@@ -302,6 +303,16 @@ public class SecurityAutoConfiguration {
             RefreshTokenStore refreshTokenStore,
             SecurityEventRecorder securityEventRecorder) {
         return new AuthController(userAccountProviderRef, passwordEncoder, jwtService, refreshTokenStore, securityEventRecorder);
+    }
+
+    @Bean
+    @ConditionalOnBean(UserAccountProvider.class)
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "security", name = "auth-mode", havingValue = "INTERNAL", matchIfMissing = true)
+    public SessionAdminController sessionAdminController(
+            RefreshTokenStore refreshTokenStore,
+            SecurityEventRecorder securityEventRecorder) {
+        return new SessionAdminController(refreshTokenStore, securityEventRecorder);
     }
 
     /**

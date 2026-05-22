@@ -1,6 +1,7 @@
 package com.sricharan.security.core.token;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Service Provider Interface (SPI) for refresh token storage and lifecycle management.
@@ -83,4 +84,33 @@ public interface RefreshTokenStore {
      * @param userId The user whose tokens should all be revoked.
      */
     void revokeAllForUser(String userId);
+
+    /**
+     * Lists active refresh-token sessions for a given user.
+     *
+     * <p>The default implementation returns an empty list to preserve backward
+     * compatibility for custom store implementations that have not yet adopted
+     * session management APIs.
+     *
+     * @param userId The user whose active sessions should be returned.
+     * @return Active sessions for the user, never {@code null}.
+     */
+    default List<RefreshSession> listActiveSessions(String userId) {
+        return List.of();
+    }
+
+    /**
+     * Revokes a single session by user + session identifier.
+     *
+     * <p>The default implementation returns {@code false} to preserve backward
+     * compatibility for custom store implementations that have not yet adopted
+     * session management APIs.
+     *
+     * @param userId The owner user identifier.
+     * @param sessionId Session identifier returned by {@link #listActiveSessions(String)}.
+     * @return {@code true} when a session was found and revoked.
+     */
+    default boolean revokeSession(String userId, String sessionId) {
+        return false;
+    }
 }

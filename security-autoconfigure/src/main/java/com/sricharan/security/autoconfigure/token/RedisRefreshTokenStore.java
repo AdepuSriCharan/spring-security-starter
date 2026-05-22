@@ -1,6 +1,7 @@
 package com.sricharan.security.autoconfigure.token;
 
 import com.sricharan.security.core.token.RefreshTokenStore;
+import com.sricharan.security.core.token.RefreshSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -9,6 +10,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -172,6 +174,42 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
         redisTemplate.delete(userTokensKey);
     }
 
+    @Override
+    public List<RefreshSession> listActiveSessions(String userId) {
+        String userTokensKey = userTokensKey(userId);
+        Set<String> tokenHashes = redisTemplate.opsForSet().members(userTokensKey);
+        if (tokenHashes == null || tokenHashes.isEmpty()) {
+            return List.of();
+        }
+
+        long nowMs = Instant.now().toEpochMilli();
+        return tokenHashes.stream()
+                .map(hash -> toActiveSession(userId, hash, nowMs))
+                .filter(session -> session != null)
+                .sorted(Comparator.comparing(RefreshSession::expiresAt))
+                .toList();
+    }
+
+    @Override
+    public boolean revokeSession(String userId, String sessionId) {
+        String tokenKey = tokenKey(sessionId);
+        Map<Object, Object> data = redisTemplate.opsForHash().entries(tokenKey);
+        if (data == null || data.isEmpty()) {
+            return false;
+        }
+        String tokenUserId = asString(data.get(FIELD_USER_ID));
+        if (!userId.equals(tokenUserId)) {
+            return false;
+        }
+        if (REVOKED_TRUE.equals(asString(data.get(FIELD_REVOKED)))) {
+            return false;
+        }
+
+        redisTemplate.opsForHash().put(tokenKey, FIELD_REVOKED, REVOKED_TRUE);
+        redisTemplate.opsForSet().remove(userTokensKey(userId), sessionId);
+        return true;
+    }
+
     private String tokenKey(String tokenHash) {
         return keyPrefix + ":token:" + tokenHash;
     }
@@ -212,5 +250,28 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
         } catch (NumberFormatException ignored) {
             return 0L;
         }
+    }
+
+    private RefreshSession toActiveSession(String userId, String tokenHash, long nowMs) {
+        String tokenKey = tokenKey(tokenHash);
+        Map<Object, Object> data = redisTemplate.opsForHash().entries(tokenKey);
+        if (data == null || data.isEmpty()) {
+            redisTemplate.opsForSet().remove(userTokensKey(userId), tokenHash);
+            return null;
+        }
+
+        if (REVOKED_TRUE.equals(asString(data.get(FIELD_REVOKED)))) {
+            redisTemplate.opsForSet().remove(userTokensKey(userId), tokenHash);
+            return null;
+        }
+
+        long expiresAtMs = parseLong(asString(data.get(FIELD_EXPIRES_AT)));
+        if (expiresAtMs <= nowMs) {
+            redisTemplate.delete(tokenKey);
+            redisTemplate.opsForSet().remove(userTokensKey(userId), tokenHash);
+            return null;
+        }
+
+        return new RefreshSession(tokenHash, userId, Instant.ofEpochMilli(expiresAtMs));
     }
 }
