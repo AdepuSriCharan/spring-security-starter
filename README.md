@@ -180,7 +180,7 @@ spring-security-explainer/
 <dependency>
     <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>1.1.2</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
