@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Sign-In Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/google-auth-lab/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow">Testing Demo</div>
+      <h1>Google Sign-In Lab</h1>
+      <p class="lede">
+        Use this page to test Google sign-in against your backend, then exchange the Google identity token
+        for your app's own access and refresh tokens.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <span class="step-number">1</span>
+          <div>
+            <div class="step-title">Configure Google</div>
+            <p class="step-text">Enable <code>security.google.enabled</code> and set <code>security.google.client-id</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-number">2</span>
+          <div>
+            <div class="step-title">Sign in</div>
+            <p class="step-text">Use the Google button or paste an ID token from your app.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-number">3</span>
+          <div>
+            <div class="step-title">Use tokens</div>
+            <p class="step-text">Call <code>/me</code>, refresh, or logout using the tokens below.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="#exchange" class="button button-primary">Start exchange</a>
+        <button id="clearAllBtn" class="button button-secondary" type="button">Clear saved tokens</button>
+      </div>
+
+      <div class="status-strip">
+        <span id="configBadge" class="badge badge-warn">Loading config...</span>
+        <span id="tokenBadge" class="badge badge-muted">No tokens stored</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card" id="exchange">
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">Google</p>
+            <h2>Exchange a Google ID token</h2>
+          </div>
+          <p class="card-note">Use the button if Google is configured. Otherwise paste an ID token manually.</p>
+        </header>
+
+        <div class="callout">
+          This posts your Google ID token to <code>/login/google</code> and returns your app tokens.
+        </div>
+
+        <div id="googleButtonWrap" class="google-wrap">
+          <div class="google-placeholder" id="googleButtonStatus">
+            Waiting for Google client configuration...
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="googleToken">Google ID token</label>
+          <textarea id="googleToken" rows="6" placeholder="Paste the idToken returned by Google sign-in here"></textarea>
+        </div>
+
+        <div class="row">
+          <button id="exchangeBtn" class="button button-primary" type="button">Exchange token</button>
+          <button id="loadSampleBtn" class="button button-secondary" type="button">Load sample note</button>
+        </div>
+
+        <p class="hint">
+          The backend verifies Google, links or creates a local user, and returns your normal access/refresh tokens.
+        </p>
+      </article>
+
+      <article class="card">
+        <header class="card-header">
+          <div>
+            <p class="card-kicker">App Tokens</p>
+            <h2>What your backend returns</h2>
+          </div>
+          <p class="card-note">Stored locally so you can test the next requests quickly.</p>
+        </header>
+
+        <div class="token-panel">
+          <div class="token-block">
+            <div class="token-label">Access token</div>
+            <pre id="accessTokenView" class="token-value">No access token yet.</pre>
+            <div class="row">
+              <button id="copyAccessBtn" class="button button-secondary" type="button">Copy access token</button>
+              <button id="meBtn" class="button button-primary" type="button">Call /me</button>
+            </div>
+          </div>
+
+          <div class="token-block">
+            <div class="token-label">Refresh token</div>
+            <pre id="refreshTokenView" class="token-value">No refresh token yet.</pre>
+            <div class="row">
+              <button id="copyRefreshBtn" class="button button-secondary" type="button">Copy refresh token</button>
+              <button id="refreshBtn" class="button button-primary" type="button">Refresh session</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row row-end">
+          <button id="logoutBtn" class="button button-danger" type="button">Logout</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="card wide">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">Response</p>
+          <h2>Backend output</h2>
+        </div>
+        <p class="card-note">Use this to inspect token responses, /me output, and any auth errors.</p>
+      </header>
+
+      <pre id="output" class="output">Ready.</pre>
+    </section>
+
+    <section class="footer-note">
+      <p>
+        For mobile apps, the only difference is where the Google ID token comes from.
+        Expo or React Native gets the Google token, then posts it to <code>/login/google</code> exactly like this page does.
+      </p>
+    </section>
+  </main>
+
+  <script src="/google-auth-lab/app.js" defer></script>
+</body>
+</html>

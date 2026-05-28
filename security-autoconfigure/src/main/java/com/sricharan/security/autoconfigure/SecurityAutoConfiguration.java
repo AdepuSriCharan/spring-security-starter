@@ -6,6 +6,7 @@ import com.sricharan.security.autoconfigure.aspect.AuthorizationAspect;
 import com.sricharan.security.autoconfigure.config.SecurityProperties;
 import com.sricharan.security.autoconfigure.controller.AuthController;
 import com.sricharan.security.autoconfigure.controller.SessionAdminController;
+import com.sricharan.security.autoconfigure.google.GoogleIdentityTokenVerifier;
 import com.sricharan.security.autoconfigure.filter.JwtAuthenticationFilter;
 import com.sricharan.security.autoconfigure.filter.SecurityContextFilter;
 import com.sricharan.security.autoconfigure.handler.JsonAccessDeniedHandler;
@@ -19,6 +20,7 @@ import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
 import com.sricharan.security.autoconfigure.observability.SecurityMetricsRecorder;
 import com.sricharan.security.autoconfigure.token.InMemoryRefreshTokenStore;
 import com.sricharan.security.core.account.UserAccountProvider;
+import com.sricharan.security.core.account.ExternalIdentityAccountLinker;
 import com.sricharan.security.core.adapter.AuthenticationAdapter;
 import com.sricharan.security.core.audit.SecurityAuditSink;
 import com.sricharan.security.core.authorization.AuthorizationManager;
@@ -301,8 +303,17 @@ public class SecurityAutoConfiguration {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             RefreshTokenStore refreshTokenStore,
-            SecurityEventRecorder securityEventRecorder) {
-        return new AuthController(userAccountProviderRef, passwordEncoder, jwtService, refreshTokenStore, securityEventRecorder);
+            SecurityEventRecorder securityEventRecorder,
+            ObjectProvider<ExternalIdentityAccountLinker> externalIdentityAccountLinkerRef,
+            ObjectProvider<GoogleIdentityTokenVerifier> googleIdentityTokenVerifierRef) {
+        return new AuthController(
+                userAccountProviderRef,
+                passwordEncoder,
+                jwtService,
+                refreshTokenStore,
+                securityEventRecorder,
+                externalIdentityAccountLinkerRef,
+                googleIdentityTokenVerifierRef);
     }
 
     @Bean
@@ -313,6 +324,13 @@ public class SecurityAutoConfiguration {
             RefreshTokenStore refreshTokenStore,
             SecurityEventRecorder securityEventRecorder) {
         return new SessionAdminController(refreshTokenStore, securityEventRecorder);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "security.google", name = "enabled", havingValue = "true")
+    public GoogleIdentityTokenVerifier googleIdentityTokenVerifier(SecurityProperties securityProperties) {
+        return new GoogleIdentityTokenVerifier(securityProperties);
     }
 
     /**
@@ -337,7 +355,7 @@ public class SecurityAutoConfiguration {
             SecurityContextFilter securityContextFilter) throws Exception {
 
         return buildBaseChain(http, securityProperties, authenticationEntryPoint, accessDeniedHandler,
-                List.of("/login", "/refresh", "/logout"))
+                List.of("/login", "/login/google", "/refresh", "/logout"))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(securityContextFilter, JwtAuthenticationFilter.class)
                 .build();

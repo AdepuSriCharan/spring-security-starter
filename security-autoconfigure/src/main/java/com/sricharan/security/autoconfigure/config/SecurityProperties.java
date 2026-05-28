@@ -82,6 +82,11 @@ public class SecurityProperties {
     private final KeycloakClaims keycloak = new KeycloakClaims();
 
     /**
+     * Google sign-in settings for the optional federated login exchange.
+     */
+    private final Google google = new Google();
+
+    /**
      * Refresh-token store settings.
      */
     private final Refresh refresh = new Refresh();
@@ -113,6 +118,10 @@ public class SecurityProperties {
 
     public KeycloakClaims getKeycloak() {
         return keycloak;
+    }
+
+    public Google getGoogle() {
+        return google;
     }
 
     public Refresh getRefresh() {
@@ -215,6 +224,64 @@ public class SecurityProperties {
 
         public String getRolesKey() { return rolesKey; }
         public void setRolesKey(String rolesKey) { this.rolesKey = rolesKey; }
+    }
+
+    /**
+     * Google sign-in settings for the optional federated login exchange.
+     */
+    public static class Google {
+
+        /**
+         * Enables the Google sign-in exchange endpoint.
+         */
+        private boolean enabled = false;
+
+        /**
+         * Google OIDC issuer URI.
+         */
+        private String issuerUri = "https://accounts.google.com";
+
+        /**
+         * Google OAuth client id used as the accepted ID-token audience.
+         */
+        private String clientId = "";
+
+        /**
+         * When true, a verified email can be used to auto-link an existing local user.
+         */
+        private boolean autoLinkByEmail = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getIssuerUri() {
+            return issuerUri;
+        }
+
+        public void setIssuerUri(String issuerUri) {
+            this.issuerUri = issuerUri;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+
+        public boolean isAutoLinkByEmail() {
+            return autoLinkByEmail;
+        }
+
+        public void setAutoLinkByEmail(boolean autoLinkByEmail) {
+            this.autoLinkByEmail = autoLinkByEmail;
+        }
     }
 
     /**

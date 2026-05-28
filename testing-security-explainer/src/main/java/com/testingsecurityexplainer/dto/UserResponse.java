@@ -13,6 +13,10 @@ public class UserResponse {
     private String username;
     private Set<String> roles;
     private Set<String> permissions;
+    private String authProvider;
+    private String externalSubject;
+    private String externalEmail;
+    private Boolean externalEmailVerified;
 
     private UserResponse() {}
 
@@ -23,6 +27,10 @@ public class UserResponse {
         r.username = user.getUsername();
         r.roles = user.getRoles();
         r.permissions = user.getPermissions();
+        r.authProvider = user.getAuthProvider();
+        r.externalSubject = user.getExternalSubject();
+        r.externalEmail = user.getExternalEmail();
+        r.externalEmailVerified = user.getExternalEmailVerified();
         return r;
     }
 
@@ -30,4 +38,8 @@ public class UserResponse {
     public String getUsername() { return username; }
     public Set<String> getRoles() { return roles; }
     public Set<String> getPermissions() { return permissions; }
+    public String getAuthProvider() { return authProvider; }
+    public String getExternalSubject() { return externalSubject; }
+    public String getExternalEmail() { return externalEmail; }
+    public Boolean getExternalEmailVerified() { return externalEmailVerified; }
 }

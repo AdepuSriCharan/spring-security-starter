@@ -180,7 +180,7 @@ spring-security-explainer/
 <dependency>
     <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>1.1.3</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -281,6 +281,33 @@ security.oauth2.claims.permissions-claim=permissions
 ```
 
 ---
+
+### `Google Sign-In` (Hybrid)
+
+Use this when you want both internal username/password users and Google users in the same app.
+
+The app keeps `security.auth-mode=INTERNAL` as the source of truth for sessions, refresh tokens, logout, and authorization. Google is only used as the identity proof step, then the backend issues the normal internal JWT pair.
+
+```properties
+security.auth-mode=INTERNAL
+security.google.enabled=true
+security.google.issuer-uri=https://accounts.google.com
+security.google.client-id=YOUR_GOOGLE_CLIENT_ID
+security.google.auto-link-by-email=true
+```
+
+Client flow:
+
+1. Get a Google `idToken` on the web or mobile client.
+2. `POST /login/google` with that token.
+3. Use the returned `accessToken` and `refreshToken` like any other login.
+4. Call `/refresh` and `/logout` with the internal refresh token.
+
+This works well for:
+
+- browser apps
+- React Native / Expo apps
+- mixed teams that want both local accounts and Google sign-in
 
 ## 🌐 Built-in Endpoints (INTERNAL mode)
 
@@ -710,6 +737,15 @@ Please use [GitHub Issues](https://github.com/AdepuSriCharan/spring-security-sta
 - Audit events emitted for: login, refresh, logout, 401, 403, replay detection
 - Demo observability evidence pack with reproducible log artifacts
 
+### v1.2.0 — Hybrid Google Sign-In + Session Management
+
+- Google sign-in exchange at `POST /login/google`
+- Interactive Google auth lab at `/google-auth-lab`
+- Internal user linking for Google identities
+- Session management API for listing and revoking active sessions
+- Audit events for Google auth and session-admin actions
+- Demo app updated to exercise the new hybrid flow end to end
+
 ### v1.1.1 — Redis Refresh Token Store
 
 - `security.refresh.store-mode=INMEMORY|REDIS`
@@ -733,7 +769,7 @@ Please use [GitHub Issues](https://github.com/AdepuSriCharan/spring-security-sta
 - `UserAccountProvider` SPI
 - `@ConditionalOnMissingBean` on all defaults
 
-> **Roadmap (`1.2.0`):** Login rate limiting, account lockout, session management API, observability expansion. See [`PLAN.md`](PLAN.md) for full details.
+> **Roadmap (next):** Login rate limiting, account lockout, and observability expansion. See [`PLAN.md`](PLAN.md) for full details.
 
 ---
 

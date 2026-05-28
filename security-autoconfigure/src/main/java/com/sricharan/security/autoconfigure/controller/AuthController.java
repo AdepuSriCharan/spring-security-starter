@@ -3,11 +3,14 @@ package com.sricharan.security.autoconfigure.controller;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.sricharan.security.autoconfigure.jwt.JwtService;
 import com.sricharan.security.autoconfigure.jwt.TokenResponse;
+import com.sricharan.security.autoconfigure.google.GoogleIdentityTokenVerifier;
 import com.sricharan.security.autoconfigure.observability.SecurityEventRecorder;
 import com.sricharan.security.autoconfigure.token.TokenHashUtil;
 import com.sricharan.security.core.account.UserAccount;
+import com.sricharan.security.core.account.ExternalIdentityAccountLinker;
 import com.sricharan.security.core.account.UserAccountProvider;
 import com.sricharan.security.core.audit.SecurityAuditEventType;
+import com.sricharan.security.core.identity.ExternalIdentityProfile;
 import com.sricharan.security.core.token.RefreshTokenStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -46,18 +49,24 @@ public class AuthController {
     private final JwtService jwtService;
     private final RefreshTokenStore refreshTokenStore;
     private final SecurityEventRecorder securityEventRecorder;
+    private final ObjectProvider<ExternalIdentityAccountLinker> externalIdentityAccountLinkerRef;
+    private final ObjectProvider<GoogleIdentityTokenVerifier> googleIdentityTokenVerifierRef;
 
     public AuthController(
             ObjectProvider<UserAccountProvider> userAccountProviderRef,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             RefreshTokenStore refreshTokenStore,
-            SecurityEventRecorder securityEventRecorder) {
+            SecurityEventRecorder securityEventRecorder,
+            ObjectProvider<ExternalIdentityAccountLinker> externalIdentityAccountLinkerRef,
+            ObjectProvider<GoogleIdentityTokenVerifier> googleIdentityTokenVerifierRef) {
         this.userAccountProviderRef = userAccountProviderRef;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenStore = refreshTokenStore;
         this.securityEventRecorder = securityEventRecorder;
+        this.externalIdentityAccountLinkerRef = externalIdentityAccountLinkerRef;
+        this.googleIdentityTokenVerifierRef = googleIdentityTokenVerifierRef;
     }
 
     // ── Login ──────────────────────────────────────────────
@@ -179,6 +188,50 @@ public class AuthController {
         return ResponseEntity.ok(body);
     }
 
+    // ── Google sign-in exchange ───────────────────────────
+
+    @PostMapping("/login/google")
+    public ResponseEntity<?> googleLogin(@RequestBody GoogleLoginRequest request) {
+        if (request == null || request.getIdToken() == null || request.getIdToken().isBlank()) {
+            return errorResponse(HttpStatus.BAD_REQUEST, "Google ID token is required.");
+        }
+
+        GoogleIdentityTokenVerifier verifier = googleIdentityTokenVerifierRef.getIfAvailable();
+        if (verifier == null) {
+            return errorResponse(HttpStatus.NOT_IMPLEMENTED,
+                    "Google sign-in is not configured in this application.");
+        }
+
+        try {
+            ExternalIdentityProfile profile = verifier.verify(request.getIdToken());
+            UserAccount user = resolveGoogleUser(profile);
+
+            securityEventRecorder.record(
+                    SecurityAuditEventType.EXTERNAL_ACCOUNT_LINKED,
+                    "SUCCESS",
+                    user.getId(),
+                    user.getUsername(),
+                    Map.of("provider", profile.provider(), "subject", profile.subject()));
+
+            securityEventRecorder.record(
+                    SecurityAuditEventType.GOOGLE_LOGIN_SUCCESS,
+                    "SUCCESS",
+                    user.getId(),
+                    user.getUsername(),
+                    Map.of("provider", profile.provider(), "subject", profile.subject()));
+
+            return ResponseEntity.ok(issueAndStoreTokenPair(user));
+        } catch (IllegalArgumentException ex) {
+            securityEventRecorder.record(
+                    SecurityAuditEventType.GOOGLE_LOGIN_FAILURE,
+                    "FAILURE",
+                    null,
+                    null,
+                    Map.of("reason", ex.getMessage()));
+            return errorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────
 
     private TokenResponse issueAndStoreTokenPair(UserAccount user) {
@@ -191,6 +244,25 @@ public class AuthController {
         refreshTokenStore.store(user.getId(), tokenHash, expiresAt);
 
         return new TokenResponse(accessToken, refreshToken, jwtService.getExpirationMs());
+    }
+
+    private UserAccount resolveGoogleUser(ExternalIdentityProfile profile) {
+        ExternalIdentityAccountLinker linker = externalIdentityAccountLinkerRef.getIfAvailable();
+        if (linker != null) {
+            return linker.createOrLink(profile);
+        }
+
+        if (profile.email() != null && !profile.email().isBlank()) {
+            Optional<UserAccount> userByUsername = userAccountProviderRef.getIfAvailable() != null
+                    ? userAccountProviderRef.getIfAvailable().findByUsername(profile.email())
+                    : Optional.empty();
+            if (userByUsername.isPresent()) {
+                return userByUsername.get();
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Google sign-in is enabled, but no external identity linker is configured for this application.");
     }
 
     private ResponseEntity<Map<String, Object>> errorResponse(HttpStatus status, String message) {
@@ -218,5 +290,17 @@ public class AuthController {
 
         public String getRefreshToken() { return refreshToken; }
         public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+    }
+
+    public static class GoogleLoginRequest {
+        private String idToken;
+
+        public String getIdToken() {
+            return idToken;
+        }
+
+        public void setIdToken(String idToken) {
+            this.idToken = idToken;
+        }
     }
 }

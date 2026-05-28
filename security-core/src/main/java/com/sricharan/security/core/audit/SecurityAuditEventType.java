@@ -6,6 +6,9 @@ package com.sricharan.security.core.audit;
 public enum SecurityAuditEventType {
     LOGIN_SUCCESS,
     LOGIN_FAILURE,
+    GOOGLE_LOGIN_SUCCESS,
+    GOOGLE_LOGIN_FAILURE,
+    EXTERNAL_ACCOUNT_LINKED,
     REFRESH_SUCCESS,
     REFRESH_FAILURE,
     REFRESH_REPLAY_DETECTED,

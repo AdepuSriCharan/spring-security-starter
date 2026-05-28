@@ -1,7 +1,9 @@
 package com.testingsecurityexplainer.service;
 
 import com.sricharan.security.core.account.UserAccount;
+import com.sricharan.security.core.account.ExternalIdentityAccountLinker;
 import com.sricharan.security.core.account.UserAccountProvider;
+import com.sricharan.security.core.identity.ExternalIdentityProfile;
 import com.testingsecurityexplainer.dto.UserResponse;
 import com.testingsecurityexplainer.enums.RoleType;
 import com.testingsecurityexplainer.model.Role;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Manages user accounts.
@@ -25,7 +28,7 @@ import java.util.Set;
  * <p>Also exposes registration and admin-facing listing methods used by controllers.
  */
 @Service
-public class UserService implements UserAccountProvider {
+public class UserService implements UserAccountProvider, ExternalIdentityAccountLinker {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -44,6 +47,76 @@ public class UserService implements UserAccountProvider {
     @Override
     public Optional<UserAccount> findByUsername(String username) {
         return userRepository.findByUsername(username).map(u -> u);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UserAccount> findByExternalIdentity(String provider, String subject) {
+        if (!"google".equalsIgnoreCase(provider) || subject == null || subject.isBlank()) {
+            return Optional.empty();
+        }
+        return userRepository.findByExternalSubject(subject).map(u -> u);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UserAccount> findByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return userRepository.findByExternalEmail(email)
+                .map(u -> (UserAccount) u)
+                .or(() -> userRepository.findByUsername(email).map(u -> (UserAccount) u));
+    }
+
+    @Override
+    @Transactional
+    public UserAccount createOrLink(ExternalIdentityProfile profile) {
+        if (profile == null) {
+            throw new IllegalArgumentException("External identity profile is required");
+        }
+        if (!"google".equalsIgnoreCase(profile.provider())) {
+            throw new IllegalArgumentException("Unsupported external identity provider: " + profile.provider());
+        }
+
+        Optional<User> bySubject = userRepository.findByExternalSubject(profile.subject());
+        if (bySubject.isPresent()) {
+            return bySubject.get();
+        }
+
+        Optional<User> byEmail = Optional.empty();
+        if (profile.email() != null && !profile.email().isBlank()) {
+            byEmail = userRepository.findByExternalEmail(profile.email())
+                    .or(() -> userRepository.findByUsername(profile.email()));
+        }
+
+        if (byEmail.isPresent()) {
+            User existing = byEmail.get();
+            existing.setAuthProvider("LINKED");
+            existing.setExternalSubject(profile.subject());
+            existing.setExternalEmail(profile.email());
+            existing.setExternalEmailVerified(profile.emailVerified());
+            return userRepository.save(existing);
+        }
+
+        Role defaultRole = roleRepository.findByName(RoleType.DEFAULT)
+                .orElseThrow(() -> new IllegalStateException("DEFAULT role not found"));
+
+        String username = profile.email();
+        if (username == null || username.isBlank()) {
+            username = "google_" + profile.subject();
+        }
+
+        User created = new User(
+                username,
+                passwordEncoder.encode(UUID.randomUUID().toString()),
+                Set.of(defaultRole),
+                Set.of(),
+                "GOOGLE",
+                profile.subject(),
+                profile.email(),
+                profile.emailVerified());
+        return userRepository.save(created);
     }
 
     // ── Registration ─────────────────────────────────────────────────────────
@@ -109,4 +182,3 @@ public class UserService implements UserAccountProvider {
         }
     }
 }
-

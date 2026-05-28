@@ -8,7 +8,7 @@
     <parent>
         <groupId>io.github.adepusricharan</groupId>
         <artifactId>spring-security-explainer</artifactId>
-        <version>1.1.3</version>
+        <version>1.2.0</version>
     </parent>
 
     <artifactId>security-core</artifactId>
@@ -44,7 +44,7 @@
         <connection>scm:git:git://github.com/AdepuSriCharan/spring-security-starter.git</connection>
         <developerConnection>scm:git:ssh://github.com/AdepuSriCharan/spring-security-starter.git</developerConnection>
         <url>https://github.com/AdepuSriCharan/spring-security-starter</url>
-        <tag>v1.1.3</tag>
+        <tag>v1.2.0</tag>
     </scm>
 
     <issueManagement>
