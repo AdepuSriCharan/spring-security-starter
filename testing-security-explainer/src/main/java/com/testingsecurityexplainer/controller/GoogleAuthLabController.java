@@ -30,7 +30,7 @@ public class GoogleAuthLabController {
         Map<String, Object> body = new LinkedHashMap<>();
         SecurityProperties.Google google = securityProperties.getGoogle();
         body.put("enabled", google.isEnabled());
-        body.put("clientId", google.getClientId());
+        body.put("clientIds", google.getClientIds());
         body.put("issuerUri", google.getIssuerUri());
         body.put("autoLinkByEmail", google.isAutoLinkByEmail());
         return body;

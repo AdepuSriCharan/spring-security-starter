@@ -180,7 +180,7 @@ spring-security-explainer/
 <dependency>
     <groupId>io.github.adepusricharan</groupId>
     <artifactId>security-starter</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 </dependency>
 ```
 
@@ -292,7 +292,7 @@ The app keeps `security.auth-mode=INTERNAL` as the source of truth for sessions,
 security.auth-mode=INTERNAL
 security.google.enabled=true
 security.google.issuer-uri=https://accounts.google.com
-security.google.client-id=YOUR_GOOGLE_CLIENT_ID
+security.google.client-ids=YOUR_WEB_CLIENT_ID,YOUR_ANDROID_CLIENT_ID
 security.google.auto-link-by-email=true
 ```
 
@@ -308,6 +308,45 @@ This works well for:
 - browser apps
 - React Native / Expo apps
 - mixed teams that want both local accounts and Google sign-in
+- multi-client Google projects where Android, web, and iOS use different client IDs
+
+### Local Testing Workflow
+
+If you want to test this locally in a consumer app such as **AR Car Showcase**, do it in this order:
+
+1. Install the starter locally from this repository:
+```bash
+mvn clean install -DskipTests -Dgpg.skip=true
+```
+
+2. Use the same published version in your consumer app:
+```xml
+<dependency>
+    <groupId>io.github.adepusricharan</groupId>
+    <artifactId>security-starter</artifactId>
+    <version>1.2.1</version>
+</dependency>
+```
+
+3. Configure all Google client IDs you expect the app to use:
+```properties
+security.auth-mode=INTERNAL
+security.google.enabled=true
+security.google.issuer-uri=https://accounts.google.com
+security.google.client-ids=YOUR_WEB_CLIENT_ID,YOUR_ANDROID_CLIENT_ID
+security.google.auto-link-by-email=true
+```
+
+4. Rebuild the consumer app after any library change so Maven resolves the updated local artifact from `~/.m2`.
+
+5. From Android or web, obtain a Google `idToken` and exchange it at:
+```http
+POST /login/google
+```
+
+6. Use the returned `accessToken` and `refreshToken` exactly like the internal login flow.
+
+That lets you test the same backend locally in AR Car Showcase without deploying first.
 
 ## 🌐 Built-in Endpoints (INTERNAL mode)
 
@@ -745,6 +784,13 @@ Please use [GitHub Issues](https://github.com/AdepuSriCharan/spring-security-sta
 - Session management API for listing and revoking active sessions
 - Audit events for Google auth and session-admin actions
 - Demo app updated to exercise the new hybrid flow end to end
+
+### v1.2.1 — Google Multi-Client Audience Support
+
+- `security.google.client-ids` accepts multiple Google client IDs
+- Backend verifies Google ID tokens against any configured audience
+- Works cleanly for Android, web, and iOS apps from the same Google Cloud project
+- README updated with a local test workflow for consumer apps like AR Car Showcase
 
 ### v1.1.1 — Redis Refresh Token Store
 

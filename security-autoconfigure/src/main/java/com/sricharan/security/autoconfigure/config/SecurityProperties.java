@@ -242,9 +242,11 @@ public class SecurityProperties {
         private String issuerUri = "https://accounts.google.com";
 
         /**
-         * Google OAuth client id used as the accepted ID-token audience.
+         * Google OAuth client IDs used as accepted ID-token audiences.
+         * This can include web, Android, and iOS client IDs from the same
+         * Google Cloud project.
          */
-        private String clientId = "";
+        private List<String> clientIds = new ArrayList<>();
 
         /**
          * When true, a verified email can be used to auto-link an existing local user.
@@ -267,12 +269,12 @@ public class SecurityProperties {
             this.issuerUri = issuerUri;
         }
 
-        public String getClientId() {
-            return clientId;
+        public List<String> getClientIds() {
+            return clientIds;
         }
 
-        public void setClientId(String clientId) {
-            this.clientId = clientId;
+        public void setClientIds(List<String> clientIds) {
+            this.clientIds = clientIds == null ? new ArrayList<>() : new ArrayList<>(clientIds);
         }
 
         public boolean isAutoLinkByEmail() {

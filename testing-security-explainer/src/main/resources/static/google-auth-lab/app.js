@@ -82,6 +82,17 @@ function isRealClientId(clientId) {
   return !placeholderHints.some((hint) => clientId.includes(hint));
 }
 
+function getRealClientIds(clientIds) {
+  return (clientIds || [])
+    .map((clientId) => (typeof clientId === 'string' ? clientId.trim() : ''))
+    .filter((clientId) => isRealClientId(clientId));
+}
+
+function getPrimaryClientId(clientIds) {
+  const realClientIds = getRealClientIds(clientIds);
+  return realClientIds.length > 0 ? realClientIds[0] : '';
+}
+
 async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type') && options.body) {
@@ -132,8 +143,9 @@ async function loginWithGoogleCredential(credential) {
 }
 
 async function loadGoogleButton() {
-  if (!googleConfig || !googleConfig.enabled || !isRealClientId(googleConfig.clientId)) {
-    els.googleButtonStatus.textContent = 'Google button unavailable. Configure `security.google.client-id` to enable it.';
+  const clientId = getPrimaryClientId(googleConfig?.clientIds);
+  if (!googleConfig || !googleConfig.enabled || !clientId) {
+    els.googleButtonStatus.textContent = 'Google button unavailable. Configure `security.google.client-ids` to enable it.';
     return;
   }
 
@@ -165,7 +177,7 @@ async function loadGoogleButton() {
     els.googleButtonStatus.textContent = 'Google button ready.';
     els.googleButtonStatus.className = 'google-placeholder';
     window.google.accounts.id.initialize({
-      client_id: googleConfig.clientId,
+      client_id: clientId,
       callback: (response) => {
         loginWithGoogleCredential(response.credential).catch((error) => {
           setOutput({ error: error.message });
@@ -191,10 +203,10 @@ async function loadConfig() {
     const config = await apiFetch('/google-auth-lab/config', { method: 'GET' });
     googleConfig = config;
 
-    if (config.enabled && isRealClientId(config.clientId)) {
+    if (config.enabled && getPrimaryClientId(config.clientIds)) {
       setConfigBadge('ok', 'Google sign-in enabled');
     } else if (config.enabled) {
-      setConfigBadge('warn', 'Google enabled, client ID missing');
+      setConfigBadge('warn', 'Google enabled, client IDs missing');
     } else {
       setConfigBadge('warn', 'Google sign-in disabled');
     }
